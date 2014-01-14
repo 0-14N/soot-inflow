@@ -1,0 +1,376 @@
+/*******************************************************************************
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v2.1
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * 
+ * Contributors: Christian Fritz, Steven Arzt, Siegfried Rasthofer, Eric
+ * Bodden, and others.
+ ******************************************************************************/
+package soot.jimple.infoflow;
+
+import heros.solver.CountingThreadPoolExecutor;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import soot.MethodOrMethodContext;
+import soot.PackManager;
+import soot.PatchingChain;
+import soot.Scene;
+import soot.SceneTransformer;
+import soot.SootClass;
+import soot.SootMethod;
+import soot.Transform;
+import soot.Unit;
+import soot.jimple.Stmt;
+import soot.jimple.infoflow.InfoflowResults.SinkInfo;
+import soot.jimple.infoflow.InfoflowResults.SourceInfo;
+import soot.jimple.infoflow.aliasing.FlowSensitiveAliasStrategy;
+import soot.jimple.infoflow.aliasing.IAliasingStrategy;
+import soot.jimple.infoflow.aliasing.PtsBasedAliasStrategy;
+import soot.jimple.infoflow.config.IInfoflowConfig;
+import soot.jimple.infoflow.entryPointCreators.AndroidEntryPointConstants;
+import soot.jimple.infoflow.entryPointCreators.IEntryPointCreator;
+import soot.jimple.infoflow.handlers.ResultsAvailableHandler;
+import soot.jimple.infoflow.handlers.TaintPropagationHandler;
+import soot.jimple.infoflow.problems.BackwardsInfoflowProblem;
+import soot.jimple.infoflow.problems.InfoflowProblem;
+import soot.jimple.infoflow.solver.IInfoflowCFG;
+import soot.jimple.infoflow.solver.fastSolver.InfoflowSolver;
+import soot.jimple.infoflow.source.ISourceSinkManager;
+import soot.jimple.infoflow.util.SootMethodRepresentationParser;
+import soot.jimple.toolkits.callgraph.ReachableMethods;
+import soot.options.Options;
+/**
+ * main infoflow class which triggers the analysis and offers method to customize it.
+ *
+ */
+public class Infoflow extends AbstractInfoflow {
+	
+    private final Logger logger = LoggerFactory.getLogger(getClass());
+
+	private static boolean debug = false;
+	private static int accessPathLength = 5;
+	
+	private InfoflowResults results;
+
+	private final String androidPath;
+	private final boolean forceAndroidJar;
+	private IInfoflowConfig sootConfig;
+	
+    private IInfoflowCFG iCfg;
+    
+    private Set<ResultsAvailableHandler> onResultsAvailable = new HashSet<ResultsAvailableHandler>();
+    private Set<TaintPropagationHandler> taintPropagationHandlers = new HashSet<TaintPropagationHandler>();
+
+	/**
+	 * Creates a new instance of the InfoFlow class for analyzing plain Java code without any references to APKs or the Android SDK.
+	 */
+	public Infoflow() {
+		this.androidPath = "";
+		this.forceAndroidJar = false;
+	}
+
+	/**
+	 * Creates a new instance of the Infoflow class for analyzing Android APK files.
+	 * @param androidPath If forceAndroidJar is false, this is the base directory
+	 * of the platform files in the Android SDK. If forceAndroidJar is true, this
+	 * is the full path of a single android.jar file.
+	 * @param forceAndroidJar True if a single platform JAR file shall be forced,
+	 * false if Soot shall pick the appropriate platform version 
+	 */
+	public Infoflow(String androidPath, boolean forceAndroidJar) {
+		super();
+		this.androidPath = androidPath;
+		this.forceAndroidJar = forceAndroidJar;
+	}
+
+	/**
+	 * Creates a new instance of the Infoflow class for analyzing Android APK files.
+	 * @param androidPath If forceAndroidJar is false, this is the base directory
+	 * of the platform files in the Android SDK. If forceAndroidJar is true, this
+	 * is the full path of a single android.jar file.
+	 * @param forceAndroidJar True if a single platform JAR file shall be forced,
+	 * false if Soot shall pick the appropriate platform version
+	 * @param icfgFactory The interprocedural CFG to be used by the InfoFlowProblem 
+	 */
+	public Infoflow(String androidPath, boolean forceAndroidJar, BiDirICFGFactory icfgFactory) {
+		super(icfgFactory);
+		this.androidPath = androidPath;
+		this.forceAndroidJar = forceAndroidJar;
+	}
+
+	public static void setDebug(boolean debugflag) {
+		debug = debugflag;
+	}
+	
+	public void setSootConfig(IInfoflowConfig config){
+		sootConfig = config;
+	}
+	
+	/**
+	 * Initializes Soot.
+	 * @param path The Soot classpath
+	 * @param classes The set of classes that shall be checked for data flow
+	 * analysis seeds. All sources in these classes are used as seeds.
+	 * @param sourcesSinks The manager object for identifying sources and sinks
+	 */
+	private void initializeSoot(String path, Set<String> classes, ISourceSinkManager sourcesSinks) {
+		initializeSoot(path, classes, sourcesSinks, "");
+	}
+	
+	/**
+	 * Initializes Soot.
+	 * @param path The Soot classpath
+	 * @param classes The set of classes that shall be checked for data flow
+	 * analysis seeds. All sources in these classes are used as seeds. If a
+	 * non-empty extra seed is given, this one is used too.
+	 * @param sourcesSinks The manager object for identifying sources and sinks
+	 * @param extraSeed An optional extra seed, can be empty.
+	 */
+	private void initializeSoot(String path, Set<String> classes, ISourceSinkManager sourcesSinks, String extraSeed) {
+		// reset Soot:
+		logger.info("Resetting Soot...");
+		soot.G.reset();
+		
+		// add SceneTransformer which calculates and prints infoflow
+		Set<String> seeds = Collections.emptySet();
+		if (extraSeed != null && !extraSeed.isEmpty())
+			seeds = Collections.singleton(extraSeed);
+		addSceneTransformer(sourcesSinks, seeds);
+
+		Options.v().set_no_bodies_for_excluded(true);
+		Options.v().set_allow_phantom_refs(true);
+		if (debug)
+			Options.v().set_output_format(Options.output_format_jimple);
+		else
+			Options.v().set_output_format(Options.output_format_none);
+		Options.v().set_whole_program(true);
+		Options.v().set_soot_classpath(path);
+		Options.v().set_process_dir(new ArrayList<String>(classes));
+
+		// Configure the callgraph algorithm
+		switch (callgraphAlgorithm) {
+			case AutomaticSelection:
+				if (extraSeed == null || extraSeed.isEmpty())
+					Options.v().setPhaseOption("cg.spark", "on");
+				else
+					Options.v().setPhaseOption("cg.spark", "vta:true");
+				break;
+			case RTA:
+				Options.v().setPhaseOption("cg.spark", "on");
+				Options.v().setPhaseOption("cg.spark", "rta:true");
+				break;
+			case VTA:
+				Options.v().setPhaseOption("cg.spark", "on");
+				Options.v().setPhaseOption("cg.spark", "vta:true");
+				break;
+			default:
+				throw new RuntimeException("Invalid callgraph algorithm");
+		}
+		// do not merge variables (causes problems with PointsToSets)
+		//jb.ulp -- Local packer: minimizes number of locals
+		//Options.v().setPhaseOption("jb.ulp", "off");
+		
+		Options.v().setPhaseOption("cg", "trim-clinit:false");
+		
+		if (!this.androidPath.isEmpty()) {
+			Options.v().set_src_prec(Options.src_prec_apk);
+			if (this.forceAndroidJar)
+				soot.options.Options.v().set_force_android_jar(this.androidPath);
+			else
+				soot.options.Options.v().set_android_jars(this.androidPath);
+		} else
+			Options.v().set_src_prec(Options.src_prec_java);
+		
+		//at the end of setting: load user settings:
+		if (sootConfig != null)
+			sootConfig.setSootOptions(Options.v());
+		
+		// load all entryPoint classes with their bodies
+		Scene.v().loadNecessaryClasses();
+		boolean hasClasses = false;
+		for (String className : classes) {
+			SootClass c = Scene.v().forceResolve(className, SootClass.BODIES);
+			if (c != null){
+				c.setApplicationClass();
+				if(!c.isPhantomClass() && !c.isPhantom())
+					hasClasses = true;
+			}
+		}
+		if (!hasClasses) {
+			logger.error("Only phantom classes loaded, skipping analysis...");
+			return;
+		}
+
+	}
+
+	@Override
+	public void computeInfoflow(String path, IEntryPointCreator entryPointCreator,
+			List<String> entryPoints, ISourceSinkManager sourcesSinks) {
+		results = null;
+		if (sourcesSinks == null) {
+			logger.error("Sources are empty!");
+			return;
+		}
+	
+		initializeSoot(path,
+				SootMethodRepresentationParser.v().parseClassNames(entryPoints, false).keySet(),
+				sourcesSinks);
+
+		// entryPoints are the entryPoints required by Soot to calculate Graph - if there is no main method,
+		// we have to create a new main method and use it as entryPoint and store our real entryPoints
+		Scene.v().setEntryPoints(Collections.singletonList(entryPointCreator.createDummyMain(entryPoints)));
+
+		// We explicitly select the packs we want to run for performance reasons
+        PackManager.v().getPack("wspp").apply();
+        PackManager.v().getPack("cg").apply();
+        PackManager.v().getPack("wstp").apply();
+		if (debug)
+			PackManager.v().writeOutput();
+	}
+
+
+	@Override
+	public void computeInfoflow(String path, String entryPoint, ISourceSinkManager sourcesSinks) {
+		results = null;
+		if (sourcesSinks == null) {
+			logger.error("Sources are empty!");
+			return;
+		}
+
+		initializeSoot(path, SootMethodRepresentationParser.v().parseClassNames
+				(Collections.singletonList(entryPoint), false).keySet(), sourcesSinks, entryPoint);
+
+		if (!Scene.v().containsMethod(entryPoint)){
+			logger.error("Entry point not found: " + entryPoint);
+			return;
+		}
+		SootMethod ep = Scene.v().getMethod(entryPoint);
+		if (ep.isConcrete())
+			ep.retrieveActiveBody();
+		else {
+			logger.debug("Skipping non-concrete method " + ep);
+			return;
+		}
+		Scene.v().setEntryPoints(Collections.singletonList(ep));
+		Options.v().set_main_class(ep.getDeclaringClass().getName());
+		
+		// We explicitly select the packs we want to run for performance reasons
+        PackManager.v().getPack("wjpp").apply();
+        PackManager.v().getPack("cg").apply();
+        PackManager.v().getPack("wjtp").apply();
+		if (debug)
+			PackManager.v().writeOutput();
+	}
+
+	private void addSceneTransformer(final ISourceSinkManager sourcesSinks, final Set<String> additionalSeeds) {
+		Transform transform = new Transform("wstp.ifds", new SceneTransformer() {
+			protected void internalTransform(String phaseName, @SuppressWarnings("rawtypes") Map options) {
+                logger.info("Callgraph has {} edges", Scene.v().getCallGraph().size());
+                iCfg = icfgFactory.buildBiDirICFG();
+                
+                Set<Unit> units = iCfg.allNonCallStartNodes();
+                for(Unit u : units){
+                	String methodName = iCfg.getMethodOf(u).toString();
+                	if(methodName.contains("dummyMainClass")){
+                		logger.info("ifcg {} ====> {}", iCfg.getMethodOf(u), u);
+                	}
+                }
+                
+			}
+			
+		});
+		
+
+        for (Transform tr : preProcessors){
+            PackManager.v().getPack("wstp").add(tr);
+        }
+		PackManager.v().getPack("wstp").add(transform);
+	}
+
+		private void stringToTextFile(String fileName, String contents) throws IOException {
+			BufferedWriter wr = null;
+			try {
+				wr = new BufferedWriter(new FileWriter(fileName));
+				wr.write(contents);
+				wr.flush();
+			}
+			finally {
+				if (wr != null)
+					wr.close();
+			}
+		}
+
+	@Override
+	public InfoflowResults getResults() {
+		return results;
+	}
+
+	@Override
+	public boolean isResultAvailable() {
+		if (results == null) {
+			return false;
+		}
+		return true;
+	}
+
+	
+	public static int getAccessPathLength() {
+		return accessPathLength;
+	}
+	
+	/**
+	 * Sets the maximum depth of the access paths. All paths will be truncated
+	 * if they exceed the given size.
+	 * @param accessPathLength the maximum value of an access path. If it gets longer than
+	 *  this value, it is truncated and all following fields are assumed as tainted 
+	 *  (which is imprecise but gains performance)
+	 *  Default value is 5.
+	 */
+	public void setAccessPathLength(int accessPathLength) {
+		Infoflow.accessPathLength = accessPathLength;
+	}
+	
+	/**
+	 * Adds a handler that is called when information flow results are available
+	 * @param handler The handler to add
+	 */
+	public void addResultsAvailableHandler(ResultsAvailableHandler handler) {
+		this.onResultsAvailable.add(handler);
+	}
+	
+	/**
+	 * Adds a handler which is invoked whenever a taint is propagated
+	 * @param handler The handler to be invoked when propagating taints
+	 */
+	public void addTaintPropagationHandler(TaintPropagationHandler handler) {
+		this.taintPropagationHandlers.add(handler);
+	}
+	
+	/**
+	 * Removes a handler that is called when information flow results are available
+	 * @param handler The handler to remove
+	 */
+	public void removeResultsAvailableHandler(ResultsAvailableHandler handler) {
+		onResultsAvailable.remove(handler);
+	}
+	
+}
