@@ -8,9 +8,6 @@
  * Bodden, and others.
  ******************************************************************************/
 package soot.jimple.infoflow;
-
-import heros.solver.CountingThreadPoolExecutor;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -24,8 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,24 +35,18 @@ import soot.SootMethod;
 import soot.Transform;
 import soot.Unit;
 import soot.jimple.Stmt;
-import soot.jimple.infoflow.InfoflowResults.SinkInfo;
-import soot.jimple.infoflow.InfoflowResults.SourceInfo;
-import soot.jimple.infoflow.aliasing.FlowSensitiveAliasStrategy;
-import soot.jimple.infoflow.aliasing.IAliasingStrategy;
-import soot.jimple.infoflow.aliasing.PtsBasedAliasStrategy;
 import soot.jimple.infoflow.config.IInfoflowConfig;
-import soot.jimple.infoflow.entryPointCreators.AndroidEntryPointConstants;
 import soot.jimple.infoflow.entryPointCreators.IEntryPointCreator;
 import soot.jimple.infoflow.handlers.ResultsAvailableHandler;
 import soot.jimple.infoflow.handlers.TaintPropagationHandler;
-import soot.jimple.infoflow.problems.BackwardsInfoflowProblem;
-import soot.jimple.infoflow.problems.InfoflowProblem;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
-import soot.jimple.infoflow.solver.fastSolver.InfoflowSolver;
 import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.jimple.infoflow.util.SootMethodRepresentationParser;
 import soot.jimple.toolkits.callgraph.ReachableMethods;
 import soot.options.Options;
+import soot.shoon.android.analysis.AliasBackwardAnalysis;
+import soot.toolkits.graph.Block;
+import soot.toolkits.graph.ClassicCompleteBlockGraph;
 /**
  * main infoflow class which triggers the analysis and offers method to customize it.
  *
@@ -287,8 +276,69 @@ public class Infoflow extends AbstractInfoflow {
                 logger.info("Callgraph has {} edges", Scene.v().getCallGraph().size());
                 iCfg = icfgFactory.buildBiDirICFG();
                 
+                //set the iCfg to AliasBackwardAnalysis
+                AliasBackwardAnalysis.v().setICFG(iCfg);
                 				
-				
+				//get the sources and sinks
+                List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());
+                ReachableMethods reachableMethods = new ReachableMethods(Scene.v().getCallGraph(), eps.iterator(), null);
+                reachableMethods.update();
+                Map<String, String> classes = new HashMap<String, String>(1000);
+                for(Iterator<MethodOrMethodContext> iter = reachableMethods.listener(); iter.hasNext();){
+                	SootMethod m = iter.next().method();
+                	if(m.hasActiveBody()){
+                		//Collect the Jimple bodies
+                		//if(debug){
+                		if(true){
+                			String className = m.getDeclaringClass().getName();
+                			if(classes.containsKey(className)){
+                				classes.put(className, classes.get(className) + m.getActiveBody().toString());
+                			}else{
+                				classes.put(className, m.getActiveBody().toString());
+                			}
+                		}
+                		
+                		//For each reachable methods, find the sources and sinks.
+                		//Divide the method to basic blocks, iterate the blocks to find the sources
+                		//and sinks
+                		ClassicCompleteBlockGraph ccbg = new ClassicCompleteBlockGraph(m.getActiveBody());
+                		List<Block> blocks = ccbg.getBlocks();
+                		for(Block b : blocks){
+                			for(Iterator<Unit> it = b.iterator(); it.hasNext();){
+                				Unit u = it.next();
+                				if(sourcesSinks.isSource((Stmt) u, iCfg)){
+                    				logger.info("Source found: {}-->{}", iCfg.getMethodOf(u), u);
+                    				//record the source
+                    				AliasBackwardAnalysis.v().addSource(b, u);
+                    			}
+                    			if(sourcesSinks.isSink((Stmt) u, iCfg)){
+                    				logger.info("Sink found: {}-->{}", iCfg.getMethodOf(u), u);
+                    			}
+                			}
+                		}
+              
+                	}
+                }
+                
+                //start alias analysis
+                AliasBackwardAnalysis.v().start();
+                
+                //Save Jimple files to "JimpleFiles/"
+                //if(debug){
+                if(true){
+                	File dir = new File("JimpleFiles");
+                	if(!dir.exists()){
+                		dir.mkdir();
+                	}
+                	for(Entry<String, String> entry : classes.entrySet()){
+                		try{
+                			stringToTextFile(new File(".").getAbsoluteFile() + System.getProperty("file.separator") + "JimpleFiles"
+                					+ System.getProperty("file.separator") + entry.getKey() + ".jimple", entry.getValue());
+                		}catch(IOException e){
+                			logger.error("Could not write jimple file: {}", entry.getKey() + ".jimple", e);
+                		}
+                	}
+                }
 			}
 			
 		});
