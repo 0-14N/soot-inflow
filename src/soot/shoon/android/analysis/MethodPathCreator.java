@@ -24,9 +24,8 @@ public class MethodPathCreator {
 	 * @param method
 	 * @return
 	 */
-	public ArrayList<ArrayList<Block>> getPaths(SootMethod method){
+	public ArrayList<ArrayList<Block>> getPaths(ClassicCompleteBlockGraph graph){
 		ArrayList<ArrayList<Block>> result = new ArrayList<ArrayList<Block>>();
-		ClassicCompleteBlockGraph graph = new ClassicCompleteBlockGraph(method.getActiveBody());
 		List<Block> allBlocks = graph.getBlocks();
 		List<Block> heads = graph.getHeads();
 		List<Block> tails = graph.getTails();
@@ -85,7 +84,7 @@ public class MethodPathCreator {
 						continue;
 					}else{
 						ArrayList<Integer> clone = cloneList(source);
-						ArrayList<ArrayList<Integer>> tmp =  forkPaths(clone, succor, allBlocks,tails);
+						ArrayList<ArrayList<Integer>> tmp =  forkPaths(clone, succor, allBlocks, tails);
 						results.addAll(tmp);
 					}
 				}

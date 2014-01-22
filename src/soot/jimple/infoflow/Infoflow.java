@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 import soot.MethodOrMethodContext;
 import soot.PackManager;
-import soot.PatchingChain;
 import soot.Scene;
 import soot.SceneTransformer;
 import soot.SootClass;
@@ -44,7 +43,8 @@ import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.jimple.infoflow.util.SootMethodRepresentationParser;
 import soot.jimple.toolkits.callgraph.ReachableMethods;
 import soot.options.Options;
-import soot.shoon.android.analysis.AliasBackwardAnalysis;
+import soot.shoon.android.analysis.IntersectionAnalysisManager;
+import soot.shoon.android.analysis.SingleMethodAnalysis;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
 /**
@@ -277,7 +277,8 @@ public class Infoflow extends AbstractInfoflow {
                 iCfg = icfgFactory.buildBiDirICFG();
                 
                 //set the iCfg to AliasBackwardAnalysis
-                AliasBackwardAnalysis.v().setICFG(iCfg);
+                IntersectionAnalysisManager.v().setICFG(iCfg);
+                IntersectionAnalysisManager.v().setISSM(sourcesSinks);
                 				
 				//get the sources and sinks
                 List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());
@@ -308,11 +309,14 @@ public class Infoflow extends AbstractInfoflow {
                 				Unit u = it.next();
                 				if(sourcesSinks.isSource((Stmt) u, iCfg)){
                     				logger.info("Source found: {}-->{}", iCfg.getMethodOf(u), u);
+                    				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, ccbg, b, u);
                     				//record the source
-                    				AliasBackwardAnalysis.v().addSource(b, u);
+                    				IntersectionAnalysisManager.v().addSource(sma);
                     			}
                     			if(sourcesSinks.isSink((Stmt) u, iCfg)){
                     				logger.info("Sink found: {}-->{}", iCfg.getMethodOf(u), u);
+                    				//record the sink
+                    				IntersectionAnalysisManager.v().addSink(b, u);
                     			}
                 			}
                 		}
@@ -321,7 +325,7 @@ public class Infoflow extends AbstractInfoflow {
                 }
                 
                 //start alias analysis
-                AliasBackwardAnalysis.v().start();
+                IntersectionAnalysisManager.v().start();
                 
                 //Save Jimple files to "JimpleFiles/"
                 //if(debug){
