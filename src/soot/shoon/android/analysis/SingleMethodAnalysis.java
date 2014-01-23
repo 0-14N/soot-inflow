@@ -1,7 +1,9 @@
 package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,8 @@ import soot.Value;
 import soot.jimple.AssignStmt;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.Stmt;
+import soot.shoon.android.analysis.entity.AliasValue;
+import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
 
@@ -72,10 +76,11 @@ public class SingleMethodAnalysis {
 		
 		//if this method contains a source invoking
 		if(this.type == MethodAnalysisType.SourceContainer){
-			if(activationUnit instanceof DefinitionStmt){
-				ForwardAnalysis fa = new ForwardAnalysis(activationUnit, allUnits);
-				fa.startForward();
-			}
+			Set<TaintValue> taintsSet = new HashSet<TaintValue>();
+			Set<AliasValue> aliasSet = new HashSet<AliasValue>();
+			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, allUnits, taintsSet, aliasSet);
+			fa.startForward();
+			logger.info("finish path {}", path);
 		}
 	}
 }

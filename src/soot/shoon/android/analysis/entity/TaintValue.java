@@ -47,5 +47,22 @@ public class TaintValue {
 		}
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("{");
+		sb.append(activationUnit.toString());
+		sb.append(" aliases:[");
+		for(AliasValue av : aliases){
+			sb.append(av.getActivationUnit().toString());
+			sb.append(", ");
+		}
+		sb.append("]");
+		sb.append("}\n");
+		return sb.toString();
+	}
+	
+	
 	
 }

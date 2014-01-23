@@ -28,13 +28,32 @@ public class ForwardAnalysis {
 	private Set<TaintValue> taintsSet;
 	private Set<AliasValue> aliasSet;
 	
-	public ForwardAnalysis(Unit activationUnit, ArrayList<Unit> allUnits){
+	private AliasValue currAliasValue;
+	
+	//this is used for the first ForwardAnalysis
+	public ForwardAnalysis(Unit activationUnit, ArrayList<Unit> allUnits, 
+			Set<TaintValue> taintsSet, Set<AliasValue> aliasSet){
 		this.activationUnit = activationUnit;
 		this.allUnits = allUnits;
-		this.taintsSet = new HashSet<TaintValue>();
-		this.aliasSet = new HashSet<AliasValue>();
+		assert(taintsSet != null && aliasSet != null);
+		this.taintsSet = taintsSet;
+		this.aliasSet = aliasSet;
 		this.issm = IntersectionAnalysisManager.v().getISSM();
 		this.icfg = IntersectionAnalysisManager.v().getICFG();
+		this.currAliasValue = null;
+	}
+	
+	//this is used when found an alias
+	public ForwardAnalysis(Unit activationUnit, ArrayList<Unit> allUnits, 
+			Set<TaintValue> taintsSet, Set<AliasValue> aliasSet, AliasValue av){
+		this.activationUnit = activationUnit;
+		this.allUnits = allUnits;
+		assert(taintsSet != null && aliasSet != null);
+		this.taintsSet = taintsSet;
+		this.aliasSet = aliasSet;
+		this.issm = IntersectionAnalysisManager.v().getISSM();
+		this.icfg = IntersectionAnalysisManager.v().getICFG();
+		this.currAliasValue = av;
 	}
 	
 	public void startForward(){
@@ -46,38 +65,53 @@ public class ForwardAnalysis {
 				DefinitionStmt s = (DefinitionStmt) currUnit;
 				Value lv = s.getLeftOp();
 				Value rv = s.getRightOp();
-				//if this a source
-				if(issm.isSource(s, icfg)){
-					foundNewTaint(currUnit, lv);
-				}else if(isTainted(rv, currUnit)){//rv is in taintsSet
-					//although it is totally the same as "isSource", we don't merge for clear logic
-					foundNewTaint(currUnit, lv);
-				}else if(rv instanceof InstanceFieldRef){//right value alias must be instance field
-					InstanceFieldRef ifr = (InstanceFieldRef) rv;
-					if(isAlias(ifr, currUnit)){
+					//if this a source
+					if(currAliasValue == null && issm.isSource(s, icfg)){
 						foundNewTaint(currUnit, lv);
+					}else if(isTainted(rv, currUnit)){//rv is in taintsSet
+						//although it is totally the same as "isSource", we don't merge for clear logic
+						foundNewTaint(currUnit, lv);
+					}else if(rv instanceof InstanceFieldRef){//right value alias must be instance field
+						InstanceFieldRef ifr = (InstanceFieldRef) rv;
+						if(isAlias(ifr, currUnit)){
+							foundNewTaint(currUnit, lv);
+						}
+					}else{
+						//if the right value is an alias's base, produce a new alias
+						AliasValue tmp;
+						if((tmp = isAliasBase(rv, currUnit)) != null){
+							AliasValue av = new AliasValue(currUnit, tmp.getSource(), lv);
+							aliasSet.add(av);
+						}
 					}
-				}else{
-					//if the right value is an alias's base, produce a new alias
-					AliasValue tmp;
-					if((tmp = isAliasBase(rv, currUnit)) != null){
-						AliasValue av = new AliasValue(currUnit, tmp.getSource(), lv);
-						aliasSet.add(av);
-					}
-				}
 			}
 			currIndex++;
 		}
 	}
+
+	
+	private boolean alreadyInTaintsSet(Unit currUnit, Value lv){
+		boolean result = false;
+		for(TaintValue tv : taintsSet){
+			if(tv.getActivation() == currUnit){
+				result = true;
+				break;
+			}
+		}
+		return result;
+	}
 	
 	private void foundNewTaint(Unit currUnit, Value lv){
+		if(alreadyInTaintsSet(currUnit, lv)){
+			return;
+		}
 		//first add the left value to taints set
 		TaintValue tv = new TaintValue(currUnit, lv);
 		taintsSet.add(tv);
 		//then, whether the left value is a FieldRef (only instance field can have alias) TODO
 		if(lv instanceof InstanceFieldRef){
 			tv.setHeapAssignment(true);
-			BackwardAnalysis ba = new BackwardAnalysis(currUnit, allUnits, tv);
+			BackwardAnalysis ba = new BackwardAnalysis(currUnit, allUnits, tv, taintsSet, aliasSet);
 			ba.startBackward();
 		}
 	}
@@ -92,7 +126,8 @@ public class ForwardAnalysis {
 		boolean result = false;
 		for(TaintValue tv : taintsSet){
 			Unit activation = tv.getActivation();
-			if(tv.getTaintValue() == value && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
+			Value tmp = tv.getTaintValue();
+			if(tmp.toString().equals(value.toString()) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
 				result = true;
 				break;
 			}
@@ -125,7 +160,7 @@ public class ForwardAnalysis {
 		AliasValue result = null;
 		for(AliasValue av : aliasSet){
 			Unit activation = av.getActivationUnit();
-			if(value == av.getAliasBase() && allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
+			if(value.toString().equals(av.getAliasBase().toString()) && allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
 				result = av;
 				break;
 			}

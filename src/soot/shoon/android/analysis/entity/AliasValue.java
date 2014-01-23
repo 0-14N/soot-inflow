@@ -51,9 +51,23 @@ public class AliasValue {
 	
 	public boolean isMe(InstanceFieldRef ifr){
 		boolean result = false;
-		if(ifr.getBase() == aliasBase && source.getFieldName().equals(ifr.getFieldRef().name())){
+		if(ifr.getBase().toString().equals(aliasBase.toString()) && source.getFieldName().equals(ifr.getFieldRef().name())){
 			result = true;
 		}
 		return result;
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("{");
+		sb.append(activationUnit.toString());
+		sb.append(", ");
+		sb.append(aliasBase.toString());
+		sb.append(", ");
+		sb.append(source.getActivation().toString());
+		sb.append("}\n");
+		return sb.toString();
+	}
+	
 }

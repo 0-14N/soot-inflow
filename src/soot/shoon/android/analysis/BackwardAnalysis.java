@@ -32,11 +32,13 @@ public class BackwardAnalysis {
 	
 	private InstanceFieldRef fr;
 	
-	public BackwardAnalysis(Unit activationUnit, ArrayList<Unit> allUnits, TaintValue tv){
+	public BackwardAnalysis(Unit activationUnit, ArrayList<Unit> allUnits, TaintValue tv, 
+			Set<TaintValue> taintsSet, Set<AliasValue> aliasSet){
 		this.activationUnit = activationUnit;
 		this.allUnits = allUnits;
-		this.taintsSet = new HashSet<TaintValue>();
-		this.aliasSet = new HashSet<AliasValue>();
+		assert(taintsSet != null && aliasSet != null);
+		this.taintsSet = taintsSet;
+		this.aliasSet = aliasSet;
 		this.issm = IntersectionAnalysisManager.v().getISSM();
 		this.icfg = IntersectionAnalysisManager.v().getICFG();
 		this.tv = tv;
@@ -59,15 +61,15 @@ public class BackwardAnalysis {
 					Value lv = s.getLeftOp();
 					Value rv = s.getRightOp();
 					Value base = fr.getBase();
-					if(lv == base){
+					if(lv.toString().equals(base.toString())){
 						AliasValue av = new AliasValue(currUnit, tv, rv);
 						aliasSet.add(av);
-						ForwardAnalysis fa = new ForwardAnalysis(currUnit, allUnits);
+						ForwardAnalysis fa = new ForwardAnalysis(currUnit, allUnits, taintsSet, aliasSet, av);
 						fa.startForward();
-					}else if(rv == base){
+					}else if(rv.toString().equals(base.toString())){
 						AliasValue av = new AliasValue(currUnit, tv, lv);
 						aliasSet.add(av);
-						ForwardAnalysis fa = new ForwardAnalysis(currUnit, allUnits);
+						ForwardAnalysis fa = new ForwardAnalysis(currUnit, allUnits, taintsSet, aliasSet, av);
 						fa.startForward();
 					}
 				}
