@@ -80,7 +80,7 @@ public class SingleMethodAnalysis {
 			Set<AliasValue> aliasSet = new HashSet<AliasValue>();
 			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, allUnits, taintsSet, aliasSet);
 			fa.startForward();
-			logger.info("finish path {}", path);
+			logger.info("path end {}!", path);
 		}
 	}
 }

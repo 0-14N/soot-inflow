@@ -148,10 +148,14 @@ public class Infoflow extends AbstractInfoflow {
 		Options.v().set_no_bodies_for_excluded(true);
 		Options.v().set_allow_phantom_refs(true);
 		if (debug)
-			Options.v().set_output_format(Options.output_format_jimple);
+			Options.v().set_output_format(Options.output_format_shimple);
 		else
-			Options.v().set_output_format(Options.output_format_none);
-		Options.v().set_whole_program(true);
+			Options.v().set_output_format(Options.output_format_shimple);
+			//Options.v().set_output_format(Options.output_format_none);
+		Options.v().set_via_shimple(true);
+		Options.v().set_whole_shimple(true);
+		Options.v().setPhaseOption("wstp", "enabled:true");
+		//Options.v().set_whole_program(true);
 		Options.v().set_soot_classpath(path);
 		Options.v().set_process_dir(new ArrayList<String>(classes));
 
@@ -176,7 +180,7 @@ public class Infoflow extends AbstractInfoflow {
 		}
 		// do not merge variables (causes problems with PointsToSets)
 		//jb.ulp -- Local packer: minimizes number of locals
-		Options.v().setPhaseOption("jb.ulp", "off");
+		//Options.v().setPhaseOption("jb.ulp", "off");
 		
 		Options.v().setPhaseOption("cg", "trim-clinit:false");
 		
@@ -229,9 +233,10 @@ public class Infoflow extends AbstractInfoflow {
 		Scene.v().setEntryPoints(Collections.singletonList(entryPointCreator.createDummyMain(entryPoints)));
 
 		// We explicitly select the packs we want to run for performance reasons
-        PackManager.v().getPack("wjpp").apply();
+        PackManager.v().getPack("wspp").apply();
         PackManager.v().getPack("cg").apply();
-        PackManager.v().getPack("wjtp").apply();
+        //PackManager.v().getPack("wjtp").apply();
+        PackManager.v().getPack("wstp").apply();
 		if (debug)
 			PackManager.v().writeOutput();
 	}
@@ -263,17 +268,18 @@ public class Infoflow extends AbstractInfoflow {
 		Options.v().set_main_class(ep.getDeclaringClass().getName());
 		
 		// We explicitly select the packs we want to run for performance reasons
-        PackManager.v().getPack("wjpp").apply();
+        PackManager.v().getPack("wspp").apply();
         PackManager.v().getPack("cg").apply();
-        PackManager.v().getPack("wjtp").apply();
+        //PackManager.v().getPack("wjtp").apply();
+        PackManager.v().getPack("wstp").apply();
 		if (debug)
 			PackManager.v().writeOutput();
 	}
 
 	private void addSceneTransformer(final ISourceSinkManager sourcesSinks, final Set<String> additionalSeeds) {
-		Transform transform = new Transform("wjtp.ifds", new SceneTransformer() {
+		Transform transform = new Transform("wstp.analysis", new SceneTransformer() {
 			protected void internalTransform(String phaseName, @SuppressWarnings("rawtypes") Map options) {
-                logger.info("Callgraph has {} edges", Scene.v().getCallGraph().size());
+                logger.info("Shimple Callgraph has {} edges", Scene.v().getCallGraph().size());
                 iCfg = icfgFactory.buildBiDirICFG();
                 
                 //set the iCfg to AliasBackwardAnalysis
@@ -330,16 +336,16 @@ public class Infoflow extends AbstractInfoflow {
                 //Save Jimple files to "JimpleFiles/"
                 //if(debug){
                 if(true){
-                	File dir = new File("JimpleFiles");
+                	File dir = new File("ShimpleFiles");
                 	if(!dir.exists()){
                 		dir.mkdir();
                 	}
                 	for(Entry<String, String> entry : classes.entrySet()){
                 		try{
-                			stringToTextFile(new File(".").getAbsoluteFile() + System.getProperty("file.separator") + "JimpleFiles"
-                					+ System.getProperty("file.separator") + entry.getKey() + ".jimple", entry.getValue());
+                			stringToTextFile(new File(".").getAbsoluteFile() + System.getProperty("file.separator") + "ShimpleFiles"
+                					+ System.getProperty("file.separator") + entry.getKey() + ".shimple", entry.getValue());
                 		}catch(IOException e){
-                			logger.error("Could not write jimple file: {}", entry.getKey() + ".jimple", e);
+                			logger.error("Could not write jimple file: {}", entry.getKey() + ".shimple", e);
                 		}
                 	}
                 }
@@ -347,10 +353,12 @@ public class Infoflow extends AbstractInfoflow {
 			
 		});
 
+		
         for (Transform tr : preProcessors){
-            PackManager.v().getPack("wjtp").add(tr);
+            PackManager.v().getPack("wstp").add(tr);
         }
-		PackManager.v().getPack("wjtp").add(transform);
+		//PackManager.v().getPack("wjtp").add(transform);
+		PackManager.v().getPack("wstp").add(transform);
 	}
 
 		private void stringToTextFile(String fileName, String contents) throws IOException {
