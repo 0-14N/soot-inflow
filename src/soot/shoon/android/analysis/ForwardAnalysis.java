@@ -69,14 +69,16 @@ public class ForwardAnalysis {
 					if(currAliasValue == null && issm.isSource(s, icfg)){
 						foundNewTaint(currUnit, lv);
 					}else if(isTainted(rv, currUnit)){//rv is in taintsSet
-						//although it is totally the same as "isSource", we don't merge for clear logic
 						foundNewTaint(currUnit, lv);
-					}else if(rv instanceof InstanceFieldRef){//right value alias must be instance field
-						InstanceFieldRef ifr = (InstanceFieldRef) rv;
-						if(isAlias(ifr, currUnit)){
-							foundNewTaint(currUnit, lv);
+					}else if(isAlias(rv, currUnit)){
+						foundNewTaint(currUnit, lv);
+					}else{// the right value is not tainted
+						//if the left value is already tainted
+						if(isTainted(lv, currUnit)){
+							deleteTaint(lv, currUnit);
+						}else if(isAlias(lv, currUnit)){//if the left value is an alias
+							deleteAlias(lv, currUnit);
 						}
-					}else{
 						//if the right value is an alias's base, produce a new alias
 						AliasValue tmp;
 						if((tmp = isAliasBase(rv, currUnit)) != null){
@@ -86,6 +88,31 @@ public class ForwardAnalysis {
 					}
 			}
 			currIndex++;
+		}
+	}
+	
+	private void deleteTaint(Value lv, Unit currUnit){
+		for(TaintValue tv : taintsSet){
+			Value value = tv.getTaintValue();
+			if(lv.toString().equals(value.toString()) && 
+					allUnits.indexOf(currUnit) > allUnits.indexOf(tv.getActivation())){
+				Set<AliasValue> aliases = tv.getAliases();
+				for(AliasValue alias : aliases){
+					aliasSet.remove(alias);
+				}
+				aliases.clear();
+				taintsSet.remove(tv);
+			}
+		}
+	}
+	
+	private void deleteAlias(Value lv, Unit currUnit){
+		assert(lv instanceof InstanceFieldRef);
+		InstanceFieldRef ifr = (InstanceFieldRef) lv;
+		for(AliasValue av : aliasSet){
+			if(av.isMe(ifr) && allUnits.indexOf(currUnit) > allUnits.indexOf(av.getActivationUnit())){
+				aliasSet.remove(av);
+			}
 		}
 	}
 
@@ -135,13 +162,15 @@ public class ForwardAnalysis {
 		return result;
 	}
 	
-	private boolean isAlias(InstanceFieldRef value, Unit currUnit){
+	private boolean isAlias(Value value, Unit currUnit){
 		boolean result = false;
-		for(AliasValue av : aliasSet){
-			Unit activation = av.getSource().getActivation();
-			if(av.isMe(value) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
-				result = true;
-				break;
+		if(value instanceof InstanceFieldRef){
+			for(AliasValue av : aliasSet){
+				Unit activation = av.getSource().getActivation();
+				if(av.isMe((InstanceFieldRef)value) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
+					result = true;
+					break;
+				}
 			}
 		}
 		return result;

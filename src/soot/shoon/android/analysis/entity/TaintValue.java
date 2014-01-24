@@ -40,6 +40,10 @@ public class TaintValue {
 		return this.activationUnit;
 	}
 	
+	public Set<AliasValue> getAliases(){
+		return this.aliases;
+	}
+	
 	public String getFieldName(){
 		String result = null;
 		if(isHeapAssignment){
