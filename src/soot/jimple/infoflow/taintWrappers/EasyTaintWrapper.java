@@ -56,6 +56,22 @@ public class EasyTaintWrapper extends AbstractTaintWrapper {
 	private final Set<String> includeList;
 	private boolean aggressiveMode = false;
 	
+	public Map<String, List<String>> getClassList(){
+		return this.classList;
+	}
+	
+	public Map<String, List<String>> getExcludeList(){
+		return this.excludeList;
+	}
+	
+	public Map<String, List<String>> getKillList(){
+		return this.killList;
+	}
+	
+	public Set<String> getIncludeList(){
+		return this.includeList;
+	}
+	
 	public EasyTaintWrapper(HashMap<String, List<String>> classList){
 		this.classList = classList;
 		this.excludeList = new HashMap<String, List<String>>();

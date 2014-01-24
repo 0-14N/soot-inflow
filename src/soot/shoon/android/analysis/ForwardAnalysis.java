@@ -4,12 +4,16 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
+import soot.SootMethod;
+import soot.SootMethodRef;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.FieldRef;
 import soot.jimple.InstanceFieldRef;
+import soot.jimple.InvokeExpr;
+import soot.jimple.InvokeStmt;
 import soot.jimple.StaticFieldRef;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
@@ -65,28 +69,70 @@ public class ForwardAnalysis {
 				DefinitionStmt s = (DefinitionStmt) currUnit;
 				Value lv = s.getLeftOp();
 				Value rv = s.getRightOp();
-					//if this a source
-					if(currAliasValue == null && issm.isSource(s, icfg)){
-						foundNewTaint(currUnit, lv);
-					}else if(isTainted(rv, currUnit)){//rv is in taintsSet
-						foundNewTaint(currUnit, lv);
-					}else if(isAlias(rv, currUnit)){
-						foundNewTaint(currUnit, lv);
-					}else{// the right value is not tainted
-						//if the left value is already tainted
-						if(isTainted(lv, currUnit)){
-							deleteTaint(lv, currUnit);
-						}else if(isAlias(lv, currUnit)){//if the left value is an alias
-							deleteAlias(lv, currUnit);
-						}
-						//if the right value is an alias's base, produce a new alias
-						AliasValue tmp;
-						if((tmp = isAliasBase(rv, currUnit)) != null){
-							AliasValue av = new AliasValue(currUnit, tmp.getSource(), lv);
-							aliasSet.add(av);
-						}
+				//if this a source
+				if(currAliasValue == null && issm.isSource(s, icfg)){
+					foundNewTaint(currUnit, lv);
+				}else if(isTainted(rv, currUnit)){//rv is in taintsSet
+					foundNewTaint(currUnit, lv);
+				}else if(isAlias(rv, currUnit)){
+					foundNewTaint(currUnit, lv);
+				}else{// the right value is not tainted
+					//if the left value is already tainted
+					if(isTainted(lv, currUnit)){
+						deleteTaint(lv, currUnit);
+					}else if(isAlias(lv, currUnit)){//if the left value is an alias
+						deleteAlias(lv, currUnit);
 					}
+					//if the right value is an alias's base, produce a new alias
+					AliasValue tmp;
+					if((tmp = isAliasBase(rv, currUnit)) != null){
+						AliasValue av = new AliasValue(currUnit, tmp.getSource(), lv);
+						aliasSet.add(av);
+					}
+				}
 			}
+			
+			//if this is a assignment: result = *invoke $r0.<classname: return-type method-name (List<type>) (List<parameters)
+			//or InvokeStmt: virtualinvoke $r0.<com.demos.flowdroid1.MainActivity: void setContentView(int)>(2130903040);
+			InvokeExpr invokeExpr = null;
+			Value retValue = null;
+			if(currUnit instanceof AssignStmt){
+				AssignStmt as = (AssignStmt) currUnit;
+				if(!issm.isSource(as, icfg)){
+					Value rv = as.getRightOp();
+					if(rv instanceof InvokeExpr)
+						invokeExpr = (InvokeExpr) rv;
+					if(invokeExpr != null){
+						retValue = as.getLeftOp();
+					}
+				}
+			}else if(currUnit instanceof InvokeStmt){
+				InvokeStmt is = (InvokeStmt) currUnit;
+				invokeExpr = is.getInvokeExpr();
+			}
+			
+			if(invokeExpr != null){
+				SootMethodRef smr = invokeExpr.getMethodRef();
+				String className = smr.declaringClass().getName();
+				String methodName = smr.name();
+				SootMethod callee = IntersectionAnalysisManager.v().getMethod(className, methodName);
+				if(callee != null){
+					//this method is in excluedeList, skip it
+					if(IntersectionAnalysisManager.v().isInExcludeList(callee.getDeclaringClass().getName(), methodName)){
+						//TODO currently, nothing to do
+						//this method is in includeList or classList
+					}else if(IntersectionAnalysisManager.v().isInIncludeSet(callee.getDeclaringClass().getName(), methodName)
+							|| IntersectionAnalysisManager.v().isInClassList(callee.getDeclaringClass().getName(), methodName)){
+						//if any one of the parameters is tainted, the retValue shoule be tainted
+						//TODO
+					}else{
+						//new SingleMethodAnalysis
+						//TODO
+					}
+				}
+			}
+			
+			
 			currIndex++;
 		}
 	}

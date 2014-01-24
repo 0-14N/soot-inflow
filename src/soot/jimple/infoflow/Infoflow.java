@@ -285,6 +285,7 @@ public class Infoflow extends AbstractInfoflow {
                 //set the iCfg to AliasBackwardAnalysis
                 IntersectionAnalysisManager.v().setICFG(iCfg);
                 IntersectionAnalysisManager.v().setISSM(sourcesSinks);
+                IntersectionAnalysisManager.v().setITPW(taintWrapper);
                 				
 				//get the sources and sinks
                 List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());
@@ -293,6 +294,10 @@ public class Infoflow extends AbstractInfoflow {
                 Map<String, String> classes = new HashMap<String, String>(1000);
                 for(Iterator<MethodOrMethodContext> iter = reachableMethods.listener(); iter.hasNext();){
                 	SootMethod m = iter.next().method();
+                	
+                	//save the method 
+                	IntersectionAnalysisManager.v().addMethod(m);
+                	
                 	if(m.hasActiveBody()){
                 		//Collect the Jimple bodies
                 		//if(debug){
