@@ -3,7 +3,6 @@ package soot.shoon.android.analysis;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -12,7 +11,6 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
 import soot.Unit;
@@ -22,11 +20,10 @@ import soot.jimple.infoflow.taintWrappers.EasyTaintWrapper;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.toolkits.graph.Block;
 
-public class IntersectionAnalysisManager {
-	private static IntersectionAnalysisManager instance;
+public class AnalysisManager {
+	private static AnalysisManager instance;
 	
 	Logger logger = LoggerFactory.getLogger(getClass());
-	private final boolean debug = true;
 
 	private IInfoflowCFG icfg; 
 	private ISourceSinkManager issm;
@@ -40,11 +37,11 @@ public class IntersectionAnalysisManager {
 	private Map<String, List<String>> killList;
 	private Set<String> includeSet;
 	
-	private IntersectionAnalysisManager(){};
+	private AnalysisManager(){};
 	
-	public static IntersectionAnalysisManager v(){
+	public static AnalysisManager v(){
 		if(instance == null){
-			instance = new IntersectionAnalysisManager();
+			instance = new AnalysisManager();
 			sources = new ArrayList<SingleMethodAnalysis>();
 			sinks = new HashMap<Block, Set<Unit>>();
 			allReachableMethods = new HashMap<SootClass, Set<SootMethod>>();

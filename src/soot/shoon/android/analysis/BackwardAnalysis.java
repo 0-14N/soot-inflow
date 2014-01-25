@@ -1,54 +1,32 @@
 package soot.shoon.android.analysis;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-
-import soot.SootField;
-import soot.SootFieldRef;
 import soot.Unit;
 import soot.Value;
-import soot.jimple.AssignStmt;
 import soot.jimple.DefinitionStmt;
-import soot.jimple.FieldRef;
 import soot.jimple.InstanceFieldRef;
-import soot.jimple.StaticFieldRef;
-import soot.jimple.infoflow.solver.IInfoflowCFG;
-import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.TaintValue;
 
 public class BackwardAnalysis {
 	
-	private ISourceSinkManager issm;
-	private IInfoflowCFG icfg;
-	
+	private SinglePathAnalysis spa;
 	private Unit activationUnit;
-	private ArrayList<Unit> allUnits;
-	private TaintValue tv;
+	//w.f = t
+	private TaintValue tv;//t
+	private InstanceFieldRef fr;//w.f
 	
-	private Set<TaintValue> taintsSet;
-	private Set<AliasValue> aliasSet;
-	
-	private InstanceFieldRef fr;
-	
-	public BackwardAnalysis(Unit activationUnit, ArrayList<Unit> allUnits, TaintValue tv, 
-			Set<TaintValue> taintsSet, Set<AliasValue> aliasSet){
+	public BackwardAnalysis(Unit activationUnit, TaintValue tv, 
+			SinglePathAnalysis spa){
 		this.activationUnit = activationUnit;
-		this.allUnits = allUnits;
-		assert(taintsSet != null && aliasSet != null);
-		this.taintsSet = taintsSet;
-		this.aliasSet = aliasSet;
-		this.issm = IntersectionAnalysisManager.v().getISSM();
-		this.icfg = IntersectionAnalysisManager.v().getICFG();
+		this.spa = spa;
 		this.tv = tv;
 	}
 	
 	
 	public void startBackward(){
-		int currIndex = allUnits.indexOf(activationUnit);
+		int currIndex = spa.getPathSummary().indexOfUnit(activationUnit);
 		while(currIndex >= 0){
-			Unit currUnit = allUnits.get(currIndex);
+			Unit currUnit = spa.getPathSummary().getUnitAt(currIndex);
 			if(currUnit instanceof DefinitionStmt){
 				DefinitionStmt s = (DefinitionStmt) currUnit;
 				//if this is activation unit, init fieldref and backward
@@ -63,13 +41,13 @@ public class BackwardAnalysis {
 					Value base = fr.getBase();
 					if(lv.toString().equals(base.toString())){
 						AliasValue av = new AliasValue(currUnit, tv, rv);
-						aliasSet.add(av);
-						ForwardAnalysis fa = new ForwardAnalysis(currUnit, allUnits, taintsSet, aliasSet, av);
+						spa.getPathSummary().addAlias(av);
+						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();
 					}else if(rv.toString().equals(base.toString())){
 						AliasValue av = new AliasValue(currUnit, tv, lv);
-						aliasSet.add(av);
-						ForwardAnalysis fa = new ForwardAnalysis(currUnit, allUnits, taintsSet, aliasSet, av);
+						spa.getPathSummary().addAlias(av);
+						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();
 					}
 				}

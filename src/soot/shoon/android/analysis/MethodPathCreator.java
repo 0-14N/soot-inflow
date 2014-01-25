@@ -3,7 +3,6 @@ package soot.shoon.android.analysis;
 import java.util.ArrayList;
 import java.util.List;
 
-import soot.SootMethod;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
 

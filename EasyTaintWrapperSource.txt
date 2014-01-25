@@ -285,8 +285,13 @@
 
 <java.util.UUID: void <init>(long,long)> 
 
-~<android.app.Activity: android.view.View findViewById(int)>
 <android.widget.EditText: android.text.Editable getText()>
 <android.text.Editable: java.lang.String toString()>
 
 <javax.servlet.ServletResponse: java.io.PrintWriter getWriter()>
+
+~<android.app.Activity: android.view.View findViewById(int)>
+~<android.app.Activity: void onCreate(android.os.Bundle)>
+~<android.app.Activity: void <init>()>
+~<com.demos.flowdroid1.MainActivity: void setContentView(int)>
+~<android.app.Activity: java.lang.Object getSystemService(java.lang.String)>

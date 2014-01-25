@@ -2,7 +2,6 @@ package soot.shoon.android.analysis.entity;
 
 import soot.Unit;
 import soot.Value;
-import soot.jimple.AssignStmt;
 import soot.jimple.InstanceFieldRef;
 
 /**

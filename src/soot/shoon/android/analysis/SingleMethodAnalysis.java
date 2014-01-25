@@ -1,21 +1,14 @@
 package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import soot.SootMethod;
 import soot.Unit;
-import soot.Value;
-import soot.jimple.AssignStmt;
-import soot.jimple.DefinitionStmt;
-import soot.jimple.Stmt;
-import soot.shoon.android.analysis.entity.AliasValue;
-import soot.shoon.android.analysis.entity.TaintValue;
+import soot.shoon.android.analysis.entity.PathSummary;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
 
@@ -28,7 +21,6 @@ public class SingleMethodAnalysis {
 	private Unit activationUnit;
 	private MethodAnalysisType type;
 	private ArrayList<ArrayList<Block>> paths;
-	
 	
 	public enum MethodAnalysisType{
 		SourceContainer,
@@ -76,11 +68,13 @@ public class SingleMethodAnalysis {
 		
 		//if this method contains a source invoking
 		if(this.type == MethodAnalysisType.SourceContainer){
-			Set<TaintValue> taintsSet = new HashSet<TaintValue>();
-			Set<AliasValue> aliasSet = new HashSet<AliasValue>();
-			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, allUnits, taintsSet, aliasSet);
-			fa.startForward();
-			logger.info("path end {}!", path);
+			//Set<TaintValue> taintsSet = new HashSet<TaintValue>();
+			//Set<AliasValue> aliasSet = new HashSet<AliasValue>();
+			//ForwardAnalysis fa = new ForwardAnalysis(activationUnit, allUnits, taintsSet, aliasSet);
+			//fa.startForward();
+			PathSummary pSummary = new PathSummary(allUnits);
+			SinglePathAnalysis spa = new SinglePathAnalysis(activationUnit, pSummary, this.type);
+			spa.start();
 		}
 	}
 }

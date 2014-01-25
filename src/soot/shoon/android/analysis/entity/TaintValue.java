@@ -5,7 +5,6 @@ import java.util.Set;
 
 import soot.Unit;
 import soot.Value;
-import soot.jimple.AssignStmt;
 import soot.jimple.InstanceFieldRef;
 
 public class TaintValue {
