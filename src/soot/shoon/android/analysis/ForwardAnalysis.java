@@ -77,9 +77,17 @@ public class ForwardAnalysis {
 						spa.getPathSummary().deleteAlias(lv, currUnit);
 					}
 					//if the right value is an alias's base, produce a new alias
+					//or 
+					//p0.f = tainted_value; ——————————— p0.f is tainted
+					//p1 = p0; ————————————————- p1.f is an alias ********************bug issue3
+					//sink(p1.f); ————————————————  
 					AliasValue previousAV;
+					TaintValue previousTV;
 					if((previousAV = spa.getPathSummary().isAliasBase(rv, currUnit)) != null){
 						AliasValue av = new AliasValue(currUnit, previousAV.getSource(), lv, previousAV);
+						spa.getPathSummary().addAlias(av);
+					}else if((previousTV = spa.getPathSummary().isTaintBase(rv, currUnit)) != null){//issue 3
+						AliasValue av = new AliasValue(currUnit, previousTV, lv, null);
 						spa.getPathSummary().addAlias(av);
 					}
 				}

@@ -153,4 +153,27 @@ public class PathSummary {
 		}
 		return result;
 	}
+
+	/**
+	 * p0.f = tainted_value; ——————————— p0.f is tainted
+	 * p1 = p0; ————————————————- p1.f is an alias ********************bug issue3
+	 * sink(p1.f); ————————————————   
+	 * @param value
+	 * @param currUnit
+	 * @return
+	 */
+	public TaintValue isTaintBase(Value value, Unit currUnit){
+		TaintValue result = null;
+		for(TaintValue tv : taintsSet){
+			if(tv.isHeapAssignment){
+				InstanceFieldRef ifr = (InstanceFieldRef) tv.getTaintValue();
+				if(value.toString().equals(ifr.getBase().toString())
+						&& allUnits.indexOf(currUnit) > allUnits.indexOf(tv.getActivation())){
+					result = tv;
+					break;
+				}
+			}
+		}
+		return result;
+	}
 }
