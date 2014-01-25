@@ -16,8 +16,12 @@ import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
+import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
 import soot.shoon.android.analysis.entity.AliasValue;
+import soot.shoon.android.analysis.entity.PathSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
+import soot.toolkits.graph.Block;
+import soot.toolkits.graph.ClassicCompleteBlockGraph;
 
 //forward analysis begins when meet a new taint value 
 public class ForwardAnalysis {
@@ -59,7 +63,7 @@ public class ForwardAnalysis {
 				Value lv = s.getLeftOp();
 				Value rv = s.getRightOp();
 				//if this a source
-				if(currAliasValue == null && issm.isSource(s, icfg)){
+				if(issm.isSource(s, icfg)){
 					foundNewTaint(currUnit, lv);
 				}else if(spa.getPathSummary().isTainted(rv, currUnit)){//rv is in taintsSet
 					foundNewTaint(currUnit, lv);
@@ -73,9 +77,9 @@ public class ForwardAnalysis {
 						spa.getPathSummary().deleteAlias(lv, currUnit);
 					}
 					//if the right value is an alias's base, produce a new alias
-					AliasValue tmp;
-					if((tmp = spa.getPathSummary().isAliasBase(rv, currUnit)) != null){
-						AliasValue av = new AliasValue(currUnit, tmp.getSource(), lv);
+					AliasValue previousAV;
+					if((previousAV = spa.getPathSummary().isAliasBase(rv, currUnit)) != null){
+						AliasValue av = new AliasValue(currUnit, previousAV.getSource(), lv, previousAV);
 						spa.getPathSummary().addAlias(av);
 					}
 				}
@@ -100,7 +104,7 @@ public class ForwardAnalysis {
 				invokeExpr = is.getInvokeExpr();
 			}
 			
-			if(invokeExpr != null && spa.getPathSummary().invokeExparHandled(invokeExpr)){
+			if(invokeExpr != null && !spa.getPathSummary().invokeExparHandled(invokeExpr)){
 				spa.getPathSummary().handledInvokeExpr(invokeExpr);
 				SootMethodRef smr = invokeExpr.getMethodRef();
 				String className = smr.declaringClass().getName();
@@ -117,17 +121,16 @@ public class ForwardAnalysis {
 						//TODO
 					}else{
 						//new SingleMethodAnalysis
-						logger.info("New Callee: {}", callee.toString());
 						List<Value> args = invokeExpr.getArgs();
 						for(Value arg : args){
 							if(spa.getPathSummary().isTainted(arg, currUnit)){
-								logger.info("args[{}] tainted", arg);
 							}
 						}
+						
+						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
 					}
 				}
 			}
-			
 			
 			currIndex++;
 		}

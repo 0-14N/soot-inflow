@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import soot.SootMethod;
 import soot.Unit;
+import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.PathSummary;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
@@ -22,10 +23,33 @@ public class SingleMethodAnalysis {
 	private MethodAnalysisType type;
 	private ArrayList<ArrayList<Block>> paths;
 	
+	private MethodSummary methodSummary;
+	
 	public enum MethodAnalysisType{
 		SourceContainer,
 		Callee,
 		Caller
+	}
+
+	public SingleMethodAnalysis(SootMethod method, MethodAnalysisType type){
+		assert(type == MethodAnalysisType.Callee);
+		this.method = method;
+		this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
+		this.activationBlock = this.ccbg.getHeads().get(0);
+		this.activationUnit = this.activationBlock.getHead();
+		this.type = type;
+		this.paths = MethodPathCreator.v().getPaths(this.ccbg);
+		this.methodSummary = new MethodSummary();
+	}
+	
+	public SingleMethodAnalysis(SootMethod method, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
+		this.method = method;
+		this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
+		this.activationBlock = activationBlock;
+		this.activationUnit = activationUnit;
+		this.type = type;
+		this.paths = MethodPathCreator.v().getPaths(this.ccbg);
+		this.methodSummary = new MethodSummary();
 	}
 	
 	public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit){
@@ -35,6 +59,7 @@ public class SingleMethodAnalysis {
 		this.activationUnit = activationUnit;
 		this.type = MethodAnalysisType.SourceContainer;
 		this.paths = MethodPathCreator.v().getPaths(ccbg);
+		this.methodSummary = new MethodSummary();
 	}
 	
 	public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
@@ -44,6 +69,7 @@ public class SingleMethodAnalysis {
 		this.activationUnit = activationUnit;
 		this.type = type;
 		this.paths = MethodPathCreator.v().getPaths(ccbg);
+		this.methodSummary = new MethodSummary();
 	}
 	
 	public void start(){
@@ -73,8 +99,13 @@ public class SingleMethodAnalysis {
 			//ForwardAnalysis fa = new ForwardAnalysis(activationUnit, allUnits, taintsSet, aliasSet);
 			//fa.startForward();
 			PathSummary pSummary = new PathSummary(allUnits);
-			SinglePathAnalysis spa = new SinglePathAnalysis(activationUnit, pSummary, this.type);
+			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
 			spa.start();
+			logger.info("path done!");
 		}
+	}
+	
+	public ClassicCompleteBlockGraph getCCBG(){
+		return this.ccbg;
 	}
 }

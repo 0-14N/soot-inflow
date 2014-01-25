@@ -9,12 +9,14 @@ import soot.shoon.android.analysis.entity.PathSummary;
 
 public class SinglePathAnalysis {
 	private Logger logger = LoggerFactory.getLogger(getClass());
-	
+
+	private SingleMethodAnalysis sma;
 	private Unit activationUnit;
 	private PathSummary pSummary;
 	private MethodAnalysisType mat;
 	
-	public SinglePathAnalysis(Unit activationUnit, PathSummary pSummary, MethodAnalysisType mat){
+	public SinglePathAnalysis(SingleMethodAnalysis sma, Unit activationUnit, PathSummary pSummary, MethodAnalysisType mat){
+		this.sma = sma;
 		this.activationUnit = activationUnit;
 		this.pSummary = pSummary;
 		this.mat = mat;
@@ -25,6 +27,10 @@ public class SinglePathAnalysis {
 			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
 			fa.startForward();
 		}
+	}
+
+	public SingleMethodAnalysis getSMA(){
+		return this.sma;
 	}
 	
 	public PathSummary getPathSummary(){

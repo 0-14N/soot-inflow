@@ -40,12 +40,12 @@ public class BackwardAnalysis {
 					Value rv = s.getRightOp();
 					Value base = fr.getBase();
 					if(lv.toString().equals(base.toString())){
-						AliasValue av = new AliasValue(currUnit, tv, rv);
+						AliasValue av = new AliasValue(currUnit, tv, rv, null);
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();
 					}else if(rv.toString().equals(base.toString())){
-						AliasValue av = new AliasValue(currUnit, tv, lv);
+						AliasValue av = new AliasValue(currUnit, tv, lv, null);
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();

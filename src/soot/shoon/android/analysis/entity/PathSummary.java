@@ -71,9 +71,18 @@ public class PathSummary {
 		InstanceFieldRef ifr = (InstanceFieldRef) lv;
 		for(AliasValue av : aliasSet){
 			if(av.isMe(ifr) && allUnits.indexOf(currUnit) > allUnits.indexOf(av.getActivationUnit())){
-				aliasSet.remove(av);
+				deleteRelatedAlias(av);
 			}
 		}
+	}
+	
+	private void deleteRelatedAlias(AliasValue headAV){
+		for(AliasValue av : aliasSet){
+			if(av.getPreviousAV() != null && av.getPreviousAV() == headAV){
+				deleteRelatedAlias(av);
+			}
+		}
+		aliasSet.remove(headAV);
 	}
 	
 	public boolean alreadyInTaintsSet(Unit currUnit, Value lv){
@@ -133,7 +142,11 @@ public class PathSummary {
 		AliasValue result = null;
 		for(AliasValue av : aliasSet){
 			Unit activation = av.getActivationUnit();
-			if(value.toString().equals(av.getAliasBase().toString()) && allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
+			//if(value.toString().equals(av.getAliasBase().toString()) && allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
+			//fix issue2
+			if((av.getAliasBase().toString().startsWith(value.toString()) ||
+					(value.toString().startsWith(av.getAliasBase().toString())))
+					&& allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
 				result = av;
 				break;
 			}

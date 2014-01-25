@@ -31,11 +31,13 @@ public class AnalysisManager {
 	private static ArrayList<SingleMethodAnalysis> sources;
 	private static HashMap<Block, Set<Unit>> sinks;
 	private static HashMap<SootClass, Set<SootMethod>> allReachableMethods;
-	
+
+	//EasyTaintWrapper related
 	private Map<String, List<String>> classList;
 	private Map<String, List<String>> excludeList;
 	private Map<String, List<String>> killList;
 	private Set<String> includeSet;
+	
 	
 	private AnalysisManager(){};
 	
@@ -185,9 +187,3 @@ public class AnalysisManager {
 		return result;
 	}
 }
-
-
-
-
-
-
