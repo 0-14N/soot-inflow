@@ -3,6 +3,7 @@ package soot.shoon.android.analysis.entity;
 import java.util.HashSet;
 import java.util.Set;
 
+import soot.SootFieldRef;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.InstanceFieldRef;
@@ -47,6 +48,14 @@ public class TaintValue {
 		String result = null;
 		if(isHeapAssignment){
 			result = ((InstanceFieldRef)taintValue).getFieldRef().name();
+		}
+		return result;
+	}
+	
+	public SootFieldRef getSootFieldRef(){
+		SootFieldRef result = null;
+		if(isHeapAssignment){
+			result = ((InstanceFieldRef)taintValue).getFieldRef();
 		}
 		return result;
 	}

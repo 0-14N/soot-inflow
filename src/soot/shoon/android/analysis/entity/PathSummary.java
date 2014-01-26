@@ -14,15 +14,25 @@ public class PathSummary {
 	private ArrayList<InvokeExpr> invokeExprs;
 	private Set<TaintValue> taintsSet;
 	private Set<AliasValue> aliasSet;
+	//initial MethodSummary
+	private MethodSummary initMethodSummary;
 	
 	public PathSummary(ArrayList<Unit> allUnits){
 		this.invokeExprs = new ArrayList<InvokeExpr>();
 		this.taintsSet = new HashSet<TaintValue>();
 		this.aliasSet = new HashSet<AliasValue>();
 		this.allUnits = allUnits;
+		this.initMethodSummary = null;
+	}
+	
+	public void setInitMethodSummary(MethodSummary ms){
+		this.initMethodSummary = ms;
+	}
+	
+	public MethodSummary getInitMethodSummary(){
+		return this.initMethodSummary;
 	}
 
-	
 	public Unit getUnitAt(int index){
 		return allUnits.get(index);
 	}

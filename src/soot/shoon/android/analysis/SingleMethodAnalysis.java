@@ -84,6 +84,12 @@ public class SingleMethodAnalysis {
 					analyzeSinglePath(path);
 				}
 			}
+		}else if(this.type == MethodAnalysisType.Callee){
+			for(ArrayList<Block> path : paths){
+				if(path.contains(activationBlock)){
+					analyzeSinglePath(path);
+				}
+			}
 		}
 	}
 	
@@ -98,16 +104,17 @@ public class SingleMethodAnalysis {
 		
 		//if this method contains a source invoking
 		if(this.type == MethodAnalysisType.SourceContainer){
-			//Set<TaintValue> taintsSet = new HashSet<TaintValue>();
-			//Set<AliasValue> aliasSet = new HashSet<AliasValue>();
-			//ForwardAnalysis fa = new ForwardAnalysis(activationUnit, allUnits, taintsSet, aliasSet);
-			//fa.startForward();
 			PathSummary pSummary = new PathSummary(allUnits);
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
 			spa.start();
-			logger.info("path done!");
+			methodSummary.addPathSummary(path, pSummary);
 		}else if(this.type == MethodAnalysisType.Callee){
-			
+			PathSummary pSummary =  new PathSummary(allUnits);
+			//TODO pSummay need to be initialized
+			pSummary.setInitMethodSummary(methodSummary);
+			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
+			spa.start();
+			methodSummary.addPathSummary(path, pSummary);
 		}
 	}
 	

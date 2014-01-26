@@ -39,13 +39,16 @@ public class BackwardAnalysis {
 					Value lv = s.getLeftOp();
 					Value rv = s.getRightOp();
 					Value base = fr.getBase();
-					if(lv.toString().equals(base.toString())){
-						AliasValue av = new AliasValue(currUnit, tv, rv, null);
+					//w.t = tainted
+					if(lv.toString().equals(base.toString())){//w = x
+						AliasValue av = new AliasValue(currUnit, tv, rv);
+						av.appendField(tv.getSootFieldRef());
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();
 					}else if(rv.toString().equals(base.toString())){
-						AliasValue av = new AliasValue(currUnit, tv, lv, null);
+						AliasValue av = new AliasValue(currUnit, tv, lv);
+						av.appendField(tv.getSootFieldRef());
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();

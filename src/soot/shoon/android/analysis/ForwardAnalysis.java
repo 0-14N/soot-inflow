@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import soot.IdentityUnit;
 import soot.SootMethod;
 import soot.SootMethodRef;
 import soot.Unit;
@@ -12,18 +13,17 @@ import soot.Value;
 import soot.jimple.AssignStmt;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
+import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
-import soot.jimple.VirtualInvokeExpr;
+import soot.jimple.ParameterRef;
+import soot.jimple.ThisRef;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
 import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.MethodSummary;
-import soot.shoon.android.analysis.entity.PathSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
-import soot.toolkits.graph.Block;
-import soot.toolkits.graph.ClassicCompleteBlockGraph;
 
 //forward analysis begins when meet a new taint value 
 public class ForwardAnalysis {
@@ -64,6 +64,32 @@ public class ForwardAnalysis {
 				DefinitionStmt s = (DefinitionStmt) currUnit;
 				Value lv = s.getLeftOp();
 				Value rv = s.getRightOp();
+			
+				//initialize the taints and aliases
+				if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Callee){
+					//this
+					if(rv instanceof ThisRef){
+						ThisRef tr = (ThisRef) rv;
+						TaintValue thisTV = spa.getPathSummary().getInitMethodSummary().getThisTV();
+						AliasValue thisAV = spa.getPathSummary().getInitMethodSummary().getThisAV();
+						if(thisTV != null){
+							Value tmp = thisTV.getTaintValue();
+							if(tmp instanceof InstanceFieldRef){//r0.t = tainted; r0.func();
+								AliasValue newAV = new AliasValue(currUnit, thisTV, lv, null);
+								spa.getPathSummary().addAlias(newAV);
+							}else{//r0 = tainted; r0.func
+								TaintValue newTV = new TaintValue(currUnit, lv);
+								spa.getPathSummary().addTaintValue(newTV);
+							}
+						}
+						if(thisAV != null){
+							logger.info("\'this\' is an alias: {}", thisAV);
+						}
+					}else if(rv instanceof ParameterRef){
+						ParameterRef pr = (ParameterRef) rv;
+					}
+				}
+				
 				//if this a source
 				if(issm.isSource(s, icfg)){
 					foundNewTaint(currUnit, lv);
@@ -140,7 +166,7 @@ public class ForwardAnalysis {
 						calleeMS.initArgss(argsCount);
 						//handle "this"
 						if(!callee.isStatic()){
-							Value base = ((VirtualInvokeExpr)invokeExpr).getBase();
+							Value base = ((InstanceInvokeExpr)invokeExpr).getBase();
 							if((tmpTV = spa.getPathSummary().isTainted(base, currUnit)) != null
 								|| (tmpTV = spa.getPathSummary().isTaintBase(base, currUnit)) != null){
 								calleeMS.setThisTV(tmpTV);
@@ -149,6 +175,7 @@ public class ForwardAnalysis {
 								calleeMS.setThisAV(tmpAV);
 							}
 						}
+						//handle the args
 						for(int i = 0; i < argsCount; i++){
 							Value arg = args.get(i);
 							if((tmpTV = spa.getPathSummary().isTainted(arg, currUnit)) != null
@@ -159,6 +186,7 @@ public class ForwardAnalysis {
 								calleeMS.setArgAliasValue(i, tmpAV);
 							}
 						}
+						sma.start();
 					}
 				}
 			}

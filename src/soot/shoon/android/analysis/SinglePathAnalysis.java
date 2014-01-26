@@ -26,6 +26,9 @@ public class SinglePathAnalysis {
 		if(this.mat == MethodAnalysisType.SourceContainer){
 			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
 			fa.startForward();
+		}else if(this.mat == MethodAnalysisType.Callee){
+			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
+			fa.startForward();
 		}
 	}
 
@@ -35,5 +38,9 @@ public class SinglePathAnalysis {
 	
 	public PathSummary getPathSummary(){
 		return this.pSummary;
+	}
+	
+	public MethodAnalysisType getMethodAnalysisType(){
+		return this.mat;
 	}
 }
