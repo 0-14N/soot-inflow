@@ -94,7 +94,13 @@ public class PathSummary {
 		 * x.f = null;
 		 */
 		TaintValue tv = av.getSource();
-		if(allUnits.indexOf(av.getActivationUnit()) > allUnits.indexOf(tv.getActivation())){
+		int activationIndex = 0;
+		if(tv == null){
+			activationIndex = av.getActivationIndex();
+		}else{
+			activationIndex = allUnits.indexOf(tv.getActivation());
+		}
+		if(allUnits.indexOf(av.getActivationUnit()) > activationIndex){
 			deleteTaint(tv);
 		}
 		//if certain taintvalue is tainted by this alias
@@ -159,8 +165,14 @@ public class PathSummary {
 		AliasValue result = null;
 		if(value instanceof InstanceFieldRef){
 			for(AliasValue av : aliasSet){
-				Unit activation = av.getSource().getActivation();
-				if(av.isMe((InstanceFieldRef)value) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
+				TaintValue tv = av.getSource();
+				int activationIndex = 0;
+				if(tv == null){
+					activationIndex = av.getActivationIndex();
+				}else{
+					activationIndex = allUnits.indexOf(tv.getActivation());
+				}
+				if(av.isMe((InstanceFieldRef)value) && activationIndex < allUnits.indexOf(currUnit)){
 					result = av;
 					break;
 				}

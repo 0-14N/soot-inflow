@@ -69,26 +69,41 @@ public class ForwardAnalysis {
 			
 				//initialize the taints and aliases
 				if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Callee){
+					TaintValue paramTV = null;
+					AliasValue paramAV = null;
 					//this
 					if(rv instanceof ThisRef){
-						ThisRef tr = (ThisRef) rv;
-						TaintValue thisTV = spa.getPathSummary().getInitMethodSummary().getThisTV();
-						AliasValue thisAV = spa.getPathSummary().getInitMethodSummary().getThisAV();
-						if(thisTV != null){
-							Value tmp = thisTV.getTaintValue();
-							if(tmp instanceof InstanceFieldRef){//r0.t = tainted; r0.func();
-								AliasValue newAV = new AliasValue(currUnit, thisTV, lv, null);
-								spa.getPathSummary().addAlias(newAV);
-							}else{//r0 = tainted; r0.func
-								TaintValue newTV = new TaintValue(currUnit, lv);
-								spa.getPathSummary().addTaintValue(newTV);
-							}
-						}
-						if(thisAV != null){
-							
-						}
+						paramTV = spa.getPathSummary().getInitMethodSummary().getThisTV();
+						paramAV = spa.getPathSummary().getInitMethodSummary().getThisAV();
 					}else if(rv instanceof ParameterRef){
 						ParameterRef pr = (ParameterRef) rv;
+						int index = pr.getIndex();
+						paramTV = spa.getPathSummary().getInitMethodSummary().getArgTaintValue(index);
+						paramAV = spa.getPathSummary().getInitMethodSummary().getArgAliasValue(index);
+					}
+					if(paramTV != null){
+						Value tmp = paramTV.getTaintValue();
+						if(tmp instanceof InstanceFieldRef){//r0.t = tainted; r0.func();
+							InstanceFieldRef ifr = (InstanceFieldRef) tmp;
+							AliasValue newAV = new AliasValue(currUnit, null , lv);
+							newAV.setActivationIndex(currIndex);
+							newAV.appendField(ifr.getFieldRef());
+							spa.getPathSummary().addAlias(newAV);
+						}else{//r0 = tainted; r0.func
+							TaintValue newTV = new TaintValue(currUnit, lv);
+							spa.getPathSummary().addTaintValue(newTV);
+						}
+					}
+					//r1 = r0; r0.t = tainted; r1.t.func();/r1.func();
+					//TODO is the case "r1.t.func()" possible? --> k = r1.t; k.func();
+					if(paramAV != null){
+						ArrayList<SootFieldRef> accessPath = paramAV.getAccessPath();
+						AliasValue newAV = new AliasValue(currUnit, null, lv);
+						newAV.setActivationIndex(currIndex);
+						for(int i = 0; i < accessPath.size(); i++){
+							newAV.appendField(accessPath.get(i));
+						}
+						spa.getPathSummary().addAlias(newAV);
 					}
 				}
 				
@@ -178,7 +193,7 @@ public class ForwardAnalysis {
 						TaintValue tmpTV = null;
 						AliasValue tmpAV = null;
 						int argsCount = args.size();
-						calleeMS.initArgss(argsCount);
+						calleeMS.initArgs(argsCount);
 						//handle "this"
 						if(!callee.isStatic()){
 							Value base = ((InstanceInvokeExpr)invokeExpr).getBase();

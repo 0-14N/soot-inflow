@@ -27,7 +27,7 @@ public class MethodSummary {
 		this.argAVs = null;
 	}
 	
-	public void initArgss(int argsCount){
+	public void initArgs(int argsCount){
 		this.argTVs = new TaintValue[argsCount];
 		this.argAVs = new AliasValue[argsCount];
 	}

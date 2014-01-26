@@ -8,8 +8,6 @@ import org.slf4j.LoggerFactory;
 import soot.SootFieldRef;
 import soot.Unit;
 import soot.Value;
-import soot.jimple.DefinitionStmt;
-import soot.jimple.FieldRef;
 import soot.jimple.InstanceFieldRef;
 
 /**
@@ -26,12 +24,22 @@ public class AliasValue {
 	private TaintValue source; //source.taintValue = "x.f"
 	private Value aliasBase; //z
 	private ArrayList<SootFieldRef> accessPath;
+	private int activationIndex;
 	
 	public AliasValue(Unit activationUnit, TaintValue source, Value aliasBase){
 		this.activationUnit = activationUnit;
 		this.source = source;
 		this.aliasBase = aliasBase;
 		this.accessPath = new ArrayList<SootFieldRef>();
+		this.activationIndex = 0;
+	}
+	
+	public void setActivationIndex(int index){
+		this.activationIndex = index;
+	}
+	
+	public int getActivationIndex(){
+		return this.activationIndex;
 	}
 	
 	public void appendField(SootFieldRef sfr){

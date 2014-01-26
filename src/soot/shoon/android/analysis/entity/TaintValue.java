@@ -23,6 +23,7 @@ public class TaintValue {
 		this.taintValue = taintValue;
 		this.aliases = new HashSet<AliasValue>();
 	}
+
 	
 	public void setHeapAssignment(boolean b){
 		this.isHeapAssignment = b;
