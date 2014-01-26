@@ -102,26 +102,26 @@ public class PathSummary {
 	 * @param currUnit currUnit must be after the TaintValue's activation
 	 * @return
 	 */
-	public boolean isTainted(Value value, Unit currUnit){
-		boolean result = false;
+	public TaintValue isTainted(Value value, Unit currUnit){
+		TaintValue result = null;
 		for(TaintValue tv : taintsSet){
 			Unit activation = tv.getActivation();
 			Value tmp = tv.getTaintValue();
 			if(tmp.toString().equals(value.toString()) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
-				result = true;
+				result = tv;
 				break;
 			}
 		}
 		return result;
 	}
 	
-	public boolean isAlias(Value value, Unit currUnit){
-		boolean result = false;
+	public AliasValue isAlias(Value value, Unit currUnit){
+		AliasValue result = null;
 		if(value instanceof InstanceFieldRef){
 			for(AliasValue av : aliasSet){
 				Unit activation = av.getSource().getActivation();
 				if(av.isMe((InstanceFieldRef)value) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
-					result = true;
+					result = av;
 					break;
 				}
 			}

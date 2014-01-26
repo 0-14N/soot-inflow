@@ -14,10 +14,12 @@ import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
+import soot.jimple.VirtualInvokeExpr;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
 import soot.shoon.android.analysis.entity.AliasValue;
+import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.PathSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
@@ -65,15 +67,15 @@ public class ForwardAnalysis {
 				//if this a source
 				if(issm.isSource(s, icfg)){
 					foundNewTaint(currUnit, lv);
-				}else if(spa.getPathSummary().isTainted(rv, currUnit)){//rv is in taintsSet
+				}else if(spa.getPathSummary().isTainted(rv, currUnit) != null){//rv is in taintsSet
 					foundNewTaint(currUnit, lv);
-				}else if(spa.getPathSummary().isAlias(rv, currUnit)){
+				}else if(spa.getPathSummary().isAlias(rv, currUnit) != null){
 					foundNewTaint(currUnit, lv);
 				}else{// the right value is not tainted
 					//if the left value is already tainted
-					if(spa.getPathSummary().isTainted(lv, currUnit)){
+					if(spa.getPathSummary().isTainted(lv, currUnit) != null){
 						spa.getPathSummary().deleteTaint(lv, currUnit);
-					}else if(spa.getPathSummary().isAlias(lv, currUnit)){//if the left value is an alias
+					}else if(spa.getPathSummary().isAlias(lv, currUnit) != null){//if the left value is an alias
 						spa.getPathSummary().deleteAlias(lv, currUnit);
 					}
 					//if the right value is an alias's base, produce a new alias
@@ -128,14 +130,35 @@ public class ForwardAnalysis {
 						//if any one of the parameters is tainted, the retValue shoule be tainted
 						//TODO
 					}else{
-						//new SingleMethodAnalysis
+						//start a new SingleMethodAnalysis
+						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
+						MethodSummary calleeMS = sma.getMethodSummary();
 						List<Value> args = invokeExpr.getArgs();
-						for(Value arg : args){
-							if(spa.getPathSummary().isTainted(arg, currUnit)){
+						TaintValue tmpTV = null;
+						AliasValue tmpAV = null;
+						int argsCount = args.size();
+						calleeMS.initArgss(argsCount);
+						//handle "this"
+						if(!callee.isStatic()){
+							Value base = ((VirtualInvokeExpr)invokeExpr).getBase();
+							if((tmpTV = spa.getPathSummary().isTainted(base, currUnit)) != null
+								|| (tmpTV = spa.getPathSummary().isTaintBase(base, currUnit)) != null){
+								calleeMS.setThisTV(tmpTV);
+							}else if((tmpAV = spa.getPathSummary().isAlias(base, currUnit)) != null
+									|| (tmpAV = spa.getPathSummary().isAliasBase(base, currUnit)) != null){
+								calleeMS.setThisAV(tmpAV);
 							}
 						}
-						
-						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
+						for(int i = 0; i < argsCount; i++){
+							Value arg = args.get(i);
+							if((tmpTV = spa.getPathSummary().isTainted(arg, currUnit)) != null
+									|| (tmpTV = spa.getPathSummary().isTaintBase(arg, currUnit)) != null){
+								calleeMS.setArgTaintValue(i, tmpTV);
+							}else if((tmpAV = spa.getPathSummary().isAlias(arg, currUnit)) != null
+									|| (tmpAV = spa.getPathSummary().isAliasBase(arg, currUnit)) != null){
+								calleeMS.setArgAliasValue(i, tmpAV);
+							}
+						}
 					}
 				}
 			}

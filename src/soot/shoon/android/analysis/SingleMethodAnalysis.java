@@ -72,6 +72,10 @@ public class SingleMethodAnalysis {
 		this.methodSummary = new MethodSummary();
 	}
 	
+	public MethodSummary getMethodSummary(){
+		return this.methodSummary;
+	}
+	
 	public void start(){
 		//this method contains a source invoking
 		if(this.type == MethodAnalysisType.SourceContainer){
@@ -102,6 +106,8 @@ public class SingleMethodAnalysis {
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
 			spa.start();
 			logger.info("path done!");
+		}else if(this.type == MethodAnalysisType.Callee){
+			
 		}
 	}
 	
