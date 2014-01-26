@@ -6,6 +6,7 @@ import java.util.Set;
 
 import soot.Unit;
 import soot.Value;
+import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InvokeExpr;
 
@@ -60,12 +61,16 @@ public class PathSummary {
 	public void handledInvokeExpr(InvokeExpr ie){
 		invokeExprs.add(ie);
 	}
-	
-	public void deleteTaint(Value lv, Unit currUnit){
+
+	/**
+	 * 
+	 * @param lv
+	 * @param currUnit
+	 * @return ==
+	 */
+	public void deleteTaint(TaintValue taintValue){
 		for(TaintValue tv : taintsSet){
-			Value value = tv.getTaintValue();
-			if(lv.toString().equals(value.toString()) && 
-					allUnits.indexOf(currUnit) > allUnits.indexOf(tv.getActivation())){
+			if(tv == taintValue){
 				Set<AliasValue> aliases = tv.getAliases();
 				for(AliasValue alias : aliases){
 					aliasSet.remove(alias);
@@ -75,24 +80,43 @@ public class PathSummary {
 			}
 		}
 	}
-	
-	public void deleteAlias(Value lv, Unit currUnit){
-		assert(lv instanceof InstanceFieldRef);
-		InstanceFieldRef ifr = (InstanceFieldRef) lv;
-		for(AliasValue av : aliasSet){
-			if(av.isMe(ifr) && allUnits.indexOf(currUnit) > allUnits.indexOf(av.getActivationUnit())){
-				deleteRelatedAlias(av);
+
+	/**
+	 * 
+	 * @param av
+	 * @return ==
+	 */
+	public void deleteAlias(AliasValue av){
+		//currUnit is after the source(TaintValue)'s activation, delete it
+		/**
+		 * x = w; 
+		 * w.f = tainted;
+		 * x.f = null;
+		 */
+		TaintValue tv = av.getSource();
+		if(allUnits.indexOf(av.getActivationUnit()) > allUnits.indexOf(tv.getActivation())){
+			deleteTaint(tv);
+		}
+		//if certain taintvalue is tainted by this alias
+		/**
+		 * x = w;
+		 * w.f = tainted;
+		 * g = x.f;
+		 * x.f = null;
+		 */
+		for(TaintValue tmp : taintsSet){
+			Value rv = ((DefinitionStmt)tmp.getActivation()).getRightOp();
+			if(rv instanceof InstanceFieldRef){
+				if(av.isMe((InstanceFieldRef)rv)){
+					deleteTaint(tmp);
+				}
 			}
 		}
-	}
-	
-	private void deleteRelatedAlias(AliasValue headAV){
-		for(AliasValue av : aliasSet){
-			if(av.getPreviousAV() != null && av.getPreviousAV() == headAV){
-				deleteRelatedAlias(av);
+		for(AliasValue tmp : aliasSet){
+			if(tmp == av){
+				aliasSet.remove(tmp);
 			}
 		}
-		aliasSet.remove(headAV);
 	}
 	
 	public boolean alreadyInTaintsSet(Unit currUnit, Value lv){
@@ -110,7 +134,7 @@ public class PathSummary {
 	 * 
 	 * @param value
 	 * @param currUnit currUnit must be after the TaintValue's activation
-	 * @return
+	 * @return ==
 	 */
 	public TaintValue isTainted(Value value, Unit currUnit){
 		TaintValue result = null;
@@ -124,7 +148,13 @@ public class PathSummary {
 		}
 		return result;
 	}
-	
+
+	/**
+	 * 
+	 * @param value
+	 * @param currUnit
+	 * @return ==
+	 */
 	public AliasValue isAlias(Value value, Unit currUnit){
 		AliasValue result = null;
 		if(value instanceof InstanceFieldRef){
@@ -140,25 +170,23 @@ public class PathSummary {
 	}
 	
 	/**
-	 * x = y.s; //produced a new AliasValue, aliasBase = y.s
+	 * x = y.s; //y.s.f is an alias
 	 * x.f = tainted;
 	 * g = y.s; //call isAliasBase(y.s), return true
 	 * j = g.f; 
 	 * sink(j);
 	 * @param value
-	 * @return
+	 * @return ==
 	 */
 	public AliasValue isAliasBase(Value value, Unit currUnit){
 		AliasValue result = null;
 		for(AliasValue av : aliasSet){
 			Unit activation = av.getActivationUnit();
-			//if(value.toString().equals(av.getAliasBase().toString()) && allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
-			//fix issue2
-			if((av.getAliasBase().toString().startsWith(value.toString()) ||
-					(value.toString().startsWith(av.getAliasBase().toString())))
-					&& allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
-				result = av;
-				break;
+			if(allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
+				if(av.isWithinAccessPath(value)){
+					result = av;
+					break;
+				}
 			}
 		}
 		return result;

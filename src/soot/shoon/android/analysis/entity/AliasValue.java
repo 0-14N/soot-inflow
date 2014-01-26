@@ -38,7 +38,10 @@ public class AliasValue {
 		this.accessPath.add(sfr);
 	}
 	
-
+	public ArrayList<SootFieldRef> getAccessPath(){
+		return this.accessPath;
+	}
+	
 	public Unit getActivationUnit() {
 		return activationUnit;
 	}
@@ -90,6 +93,33 @@ public class AliasValue {
 			sb.append("]");
 		}
 		return sb.toString();
+	}
+	
+	/** x = y.s; //y.s.f is an alias
+	 * x.f = tainted;
+	 * g = y.s; //call isAliasBase(y.s), return true
+	 * j = g.f; 
+	 * n = y; //n.s.f
+	 * sink(j);
+	 */
+	public boolean isWithinAccessPath(Value value){
+		boolean result = false;
+		if(value instanceof InstanceFieldRef){
+			InstanceFieldRef ifr = (InstanceFieldRef) value;
+			if(ifr.getBase().toString().equals(aliasBase.toString())){
+				if(accessPath.size() > 0){
+					SootFieldRef sfr = ifr.getFieldRef();
+					if(accessPath.get(0).toString().equals(sfr.toString())){
+						result = true;
+					}
+				}
+			}
+		}else{
+			if(value.toString().equals(aliasBase.toString())){
+				result = true;
+			}
+		}
+		return result;
 	}
 	
 }
