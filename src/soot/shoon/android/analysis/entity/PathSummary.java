@@ -46,8 +46,18 @@ public class PathSummary {
 		return allUnits.size();
 	}
 	
-	public void addAlias(AliasValue av){
-		this.aliasSet.add(av);
+	public void addAlias(AliasValue aliasValue){
+		boolean existed = false;
+		for(AliasValue av : aliasSet){
+			//TODO need enhancement
+			if(av.getActivationUnit() == aliasValue.getActivationUnit()){
+				existed = true;
+				break;
+			}
+		}
+		if(!existed){
+			this.aliasSet.add(aliasValue);
+		}
 	}
 	
 	public void addTaintValue(TaintValue tv){

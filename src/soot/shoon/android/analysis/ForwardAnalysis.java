@@ -64,6 +64,7 @@ public class ForwardAnalysis {
 			stopIndex = spa.getPathSummary().getPathLength();
 		}else{
 			stopIndex = spa.getPathSummary().indexOfUnit(currAliasValue.getSource().getActivation());
+			currIndex++;
 		}
 		while(currIndex < stopIndex){
 			Unit currUnit = spa.getPathSummary().getUnitAt(currIndex);
@@ -95,8 +96,7 @@ public class ForwardAnalysis {
 							newAV.appendField(ifr.getFieldRef());
 							spa.getPathSummary().addAlias(newAV);
 						}else{//r0 = tainted; r0.func
-							TaintValue newTV = new TaintValue(currUnit, lv);
-							spa.getPathSummary().addTaintValue(newTV);
+							foundNewTaint(currUnit, lv);
 						}
 					}
 					//r1 = r0; r0.t = tainted; r1.t.func();/r1.func();

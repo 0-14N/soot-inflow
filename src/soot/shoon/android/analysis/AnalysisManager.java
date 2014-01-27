@@ -178,6 +178,9 @@ public class AnalysisManager {
 			SootClass sc = getSootClass(className);
 			if(sc == null)
 				return null;
+			if(!sc.hasSuperclass()){
+				return null;
+			}
 			SootClass superClass = sc.getSuperclass();
 			if(superClass == null)
 				return null;
