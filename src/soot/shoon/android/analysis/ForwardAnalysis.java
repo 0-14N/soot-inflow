@@ -59,8 +59,13 @@ public class ForwardAnalysis {
 	
 	public void startForward(){
 		int currIndex = spa.getPathSummary().indexOfUnit(activationUnit);
-		int length = spa.getPathSummary().getPathLength();
-		while(currIndex < length){
+		int stopIndex = 0;
+		if(currAliasValue == null){
+			stopIndex = spa.getPathSummary().getPathLength();
+		}else{
+			stopIndex = spa.getPathSummary().indexOfUnit(currAliasValue.getSource().getActivation());
+		}
+		while(currIndex < stopIndex){
 			Unit currUnit = spa.getPathSummary().getUnitAt(currIndex);
 			if(currUnit instanceof DefinitionStmt){
 				DefinitionStmt s = (DefinitionStmt) currUnit;

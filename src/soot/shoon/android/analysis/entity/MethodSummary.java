@@ -38,7 +38,7 @@ public class MethodSummary {
 	
 	public TaintValue getArgTaintValue(int index){
 		TaintValue result = this.argTVs[index];
-		if(result.getActivation() == null)
+		if(null == result || null == result.getActivation())
 			result = null;
 		return result;
 	}
@@ -49,7 +49,7 @@ public class MethodSummary {
 	
 	public AliasValue getArgAliasValue(int index){
 		AliasValue result = this.argAVs[index];
-		if(result.getActivationUnit() == null)
+		if(null == result || result.getActivationUnit() == null)
 			result = null;
 		return result;
 	}
