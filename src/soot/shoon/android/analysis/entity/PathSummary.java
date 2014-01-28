@@ -18,6 +18,10 @@ public class PathSummary {
 	//initial MethodSummary
 	private MethodSummary initMethodSummary;
 	
+	//exit state
+	private List<StaticField> staticFields;
+	private List
+	
 	public PathSummary(ArrayList<Unit> allUnits){
 		this.invokeExprs = new ArrayList<InvokeExpr>();
 		this.taintsSet = new HashSet<TaintValue>();

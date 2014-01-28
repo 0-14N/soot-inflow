@@ -82,4 +82,7 @@ public class MethodSummary {
 		this.pathSummaries.put(path, ps);
 	}
 	
+	public TaintValue[] getAargTVs(){
+		return this.argTVs;
+	}
 }

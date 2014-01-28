@@ -19,6 +19,7 @@ import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.ParameterRef;
+import soot.jimple.Stmt;
 import soot.jimple.ThisRef;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
@@ -221,7 +222,17 @@ public class ForwardAnalysis {
 								calleeMS.setArgAliasValue(i, tmpAV);
 							}
 						}
-						sma.start();
+						//********* this is a sink ********
+						if(issm.isSink((Stmt)currUnit, icfg)){
+							TaintValue[] argsTVs = calleeMS.getAargTVs();
+							for(int i = 0; i < argsTVs.length; i++){
+								if(argsTVs != null){
+									logger.info("Sink has taint {}", argsTVs[i]);
+								}
+							}
+						}else{
+							sma.start();
+						}
 					}
 				}
 			}
