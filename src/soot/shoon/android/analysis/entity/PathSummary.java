@@ -22,6 +22,8 @@ public class PathSummary {
 	
 	//exit state
 	private List<StaticFieldRef> staticFields;
+	private TaintValue retTV;
+	private ArrayList<AliasValue> retAVs;
 	
 	public PathSummary(ArrayList<Unit> allUnits){
 		this.invokeExprs = new ArrayList<InvokeExpr>();
@@ -29,6 +31,8 @@ public class PathSummary {
 		this.aliasSet = new HashSet<AliasValue>();
 		this.allUnits = allUnits;
 		this.initMethodSummary = null;
+		this.retTV = null;
+		this.retAVs = new ArrayList<AliasValue>();
 	}
 	
 	public void setInitMethodSummary(MethodSummary ms){
@@ -244,5 +248,21 @@ public class PathSummary {
 	
 	public Set<TaintValue> getTaintsSet(){
 		return this.taintsSet;
+	}
+	
+	public TaintValue getRetTV(){
+		return this.retTV;
+	}
+	
+	public void setRetTV(TaintValue retTV){
+		this.retTV = retTV;
+	}
+	
+	public ArrayList<AliasValue> getRetAVs(){
+		return this.retAVs;
+	}
+	
+	public void addRetAV(AliasValue retAV){
+		this.retAVs.add(retAV);
 	}
 }

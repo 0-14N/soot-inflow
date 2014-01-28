@@ -19,6 +19,8 @@ import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.ParameterRef;
+import soot.jimple.ReturnStmt;
+import soot.jimple.ReturnVoidStmt;
 import soot.jimple.Stmt;
 import soot.jimple.ThisRef;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
@@ -236,6 +238,19 @@ public class ForwardAnalysis {
 						}
 					}
 				}
+			}
+			
+			//ret* instructions
+			if(currUnit instanceof ReturnStmt){
+				ReturnStmt rs = (ReturnStmt) currUnit;
+				Value retV = rs.getOp();
+				TaintValue retTV = null;
+				//rv is tainted
+				if((retTV = spa.getPathSummary().isTainted(retV, currUnit)) != null){
+					spa.getPathSummary().setRetTV(retTV);
+				}
+			}else if(currUnit instanceof ReturnVoidStmt){
+				ReturnVoidStmt rvs = (ReturnVoidStmt) currUnit;
 			}
 			
 			currIndex++;
