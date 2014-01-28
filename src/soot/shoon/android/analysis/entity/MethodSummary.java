@@ -14,42 +14,48 @@ public class MethodSummary {
 	//initial state
 	private List<StaticFieldRef> staticFields;
 	private TaintValue thisTV;
-	private AliasValue thisAV;
-	private TaintValue[] argTVs;
-	private AliasValue[] argAVs;
+	private ArrayList<AliasValue> thisAVs;
+	private ArrayList<TaintValue> argTVs;
+	private ArrayList<ArrayList<AliasValue>> argAVs;
 	
 	public MethodSummary(){
 		this.pathSummaries = new HashMap<ArrayList<Block>, PathSummary>();
 		this.staticFields = new ArrayList<StaticFieldRef>();
 		this.thisTV = null;
-		this.thisAV = null;
-		this.argTVs = null;
-		this.argAVs = null;
+		this.thisAVs = new ArrayList<AliasValue>();
+		this.argTVs = new ArrayList<TaintValue>();
+		this.argAVs = new ArrayList<ArrayList<AliasValue>>();
 	}
 	
 	public void initArgs(int argsCount){
-		this.argTVs = new TaintValue[argsCount];
-		this.argAVs = new AliasValue[argsCount];
+		this.argTVs = new ArrayList<TaintValue>(argsCount);
+		for(int i = 0; i < argsCount; i++){
+			this.argTVs.add(null);
+		}
+		this.argAVs = new ArrayList<ArrayList<AliasValue>>(argsCount);
+		for(int i = 0; i < argsCount; i++){
+			this.argAVs.add(new ArrayList<AliasValue>());
+		}
 	}
 	
 	public void setArgTaintValue(int index, TaintValue tv){
-		this.argTVs[index] = tv;
+		this.argTVs.set(index, tv);
 	}
 	
 	public TaintValue getArgTaintValue(int index){
-		TaintValue result = this.argTVs[index];
+		TaintValue result = this.argTVs.get(index);
 		if(null == result || null == result.getActivation())
 			result = null;
 		return result;
 	}
 	
-	public void setArgAliasValue(int index, AliasValue av){
-		this.argAVs[index] = av;
+	public void addArgAliasValue(int index, AliasValue av){
+		this.argAVs.get(index).add(av);
 	}
 	
-	public AliasValue getArgAliasValue(int index){
-		AliasValue result = this.argAVs[index];
-		if(null == result || result.getActivationUnit() == null)
+	public ArrayList<AliasValue> getArgAliasValues(int index){
+		ArrayList<AliasValue> result = this.argAVs.get(index);
+		if(null == result || result.size() == 0)
 			result = null;
 		return result;
 	}
@@ -62,12 +68,12 @@ public class MethodSummary {
 		return this.thisTV;
 	}
 	
-	public void setThisAV(AliasValue av){
-		this.thisAV = av;
+	public void addThisAV(AliasValue av){
+		this.thisAVs.add(av);
 	}
 	
-	public AliasValue getThisAV(){
-		return this.thisAV;
+	public ArrayList<AliasValue> getThisAVs(){
+		return this.thisAVs;
 	}
 	
 	public void addStaticFieldRef(StaticFieldRef sfr){
@@ -82,7 +88,7 @@ public class MethodSummary {
 		this.pathSummaries.put(path, ps);
 	}
 	
-	public TaintValue[] getAargTVs(){
+	public ArrayList<TaintValue> getAargTVs(){
 		return this.argTVs;
 	}
 }

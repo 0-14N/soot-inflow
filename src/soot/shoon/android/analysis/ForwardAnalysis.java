@@ -77,16 +77,16 @@ public class ForwardAnalysis {
 				//initialize the taints and aliases
 				if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Callee){
 					TaintValue paramTV = null;
-					AliasValue paramAV = null;
+					ArrayList<AliasValue> paramAVs = null;
 					//this
 					if(rv instanceof ThisRef){
 						paramTV = spa.getPathSummary().getInitMethodSummary().getThisTV();
-						paramAV = spa.getPathSummary().getInitMethodSummary().getThisAV();
+						paramAVs = spa.getPathSummary().getInitMethodSummary().getThisAVs();
 					}else if(rv instanceof ParameterRef){
 						ParameterRef pr = (ParameterRef) rv;
 						int index = pr.getIndex();
 						paramTV = spa.getPathSummary().getInitMethodSummary().getArgTaintValue(index);
-						paramAV = spa.getPathSummary().getInitMethodSummary().getArgAliasValue(index);
+						paramAVs = spa.getPathSummary().getInitMethodSummary().getArgAliasValues(index);
 					}
 					if(paramTV != null){
 						Value tmp = paramTV.getTaintValue();
@@ -102,14 +102,16 @@ public class ForwardAnalysis {
 					}
 					//r1 = r0; r0.t = tainted; r1.t.func();/r1.func();
 					//TODO is the case "r1.t.func()" possible? --> k = r1.t; k.func();
-					if(paramAV != null){
-						ArrayList<SootFieldRef> accessPath = paramAV.getAccessPath();
-						AliasValue newAV = new AliasValue(currUnit, null, lv);
-						newAV.setActivationIndex(currIndex);
-						for(int i = 0; i < accessPath.size(); i++){
-							newAV.appendField(accessPath.get(i));
+					if(paramAVs != null){
+						for(AliasValue paramAV : paramAVs){
+							ArrayList<SootFieldRef> accessPath = paramAV.getAccessPath();
+							AliasValue newAV = new AliasValue(currUnit, null, lv);
+							newAV.setActivationIndex(currIndex);
+							for(int i = 0; i < accessPath.size(); i++){
+								newAV.appendField(accessPath.get(i));
+							}
+							spa.getPathSummary().addAlias(newAV);
 						}
-						spa.getPathSummary().addAlias(newAV);
 					}
 				}
 				
@@ -208,7 +210,7 @@ public class ForwardAnalysis {
 								calleeMS.setThisTV(tmpTV);
 							}else if((tmpAV = spa.getPathSummary().isAlias(base, currUnit)) != null
 									|| (tmpAV = spa.getPathSummary().isAliasBase(base, currUnit)) != null){
-								calleeMS.setThisAV(tmpAV);
+								calleeMS.addThisAV(tmpAV);
 							}
 						}
 						//handle the args
@@ -219,19 +221,18 @@ public class ForwardAnalysis {
 								calleeMS.setArgTaintValue(i, tmpTV);
 							}else if((tmpAV = spa.getPathSummary().isAlias(arg, currUnit)) != null
 									|| (tmpAV = spa.getPathSummary().isAliasBase(arg, currUnit)) != null){
-								calleeMS.setArgAliasValue(i, tmpAV);
+								calleeMS.addArgAliasValue(i, tmpAV);
 							}
 						}
-						//********* this is a sink ********
-						if(issm.isSink((Stmt)currUnit, icfg)){
-							TaintValue[] argsTVs = calleeMS.getAargTVs();
-							for(int i = 0; i < argsTVs.length; i++){
-								if(argsTVs != null){
-									logger.info("Sink has taint {}", argsTVs[i]);
-								}
-							}
-						}else{
-							sma.start();
+						sma.start();
+					}
+				}
+				//********* this is a sink ********
+				if(issm.isSink((Stmt)currUnit, icfg)){
+					List<Value> args = invokeExpr.getArgs();
+					for(Value arg : args){
+						if(spa.getPathSummary().isTainted(arg, currUnit) != null){
+							logger.info("Sink has parameter(s) tainted {} {}", currUnit, arg);
 						}
 					}
 				}

@@ -2,6 +2,7 @@ package soot.shoon.android.analysis.entity;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import soot.Unit;
@@ -9,6 +10,7 @@ import soot.Value;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InvokeExpr;
+import soot.jimple.StaticFieldRef;
 
 public class PathSummary {
 	private ArrayList<Unit> allUnits;
@@ -19,8 +21,7 @@ public class PathSummary {
 	private MethodSummary initMethodSummary;
 	
 	//exit state
-	private List<StaticField> staticFields;
-	private List
+	private List<StaticFieldRef> staticFields;
 	
 	public PathSummary(ArrayList<Unit> allUnits){
 		this.invokeExprs = new ArrayList<InvokeExpr>();
@@ -239,5 +240,9 @@ public class PathSummary {
 			}
 		}
 		return result;
+	}
+	
+	public Set<TaintValue> getTaintsSet(){
+		return this.taintsSet;
 	}
 }
