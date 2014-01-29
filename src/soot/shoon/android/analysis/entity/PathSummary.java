@@ -140,10 +140,11 @@ public class PathSummary {
 				}
 			}
 		}
-		for(AliasValue tmp : aliasSet){
-			if(tmp == av){
-				aliasSet.remove(tmp);
-			}
+		
+		Iterator<AliasValue> iter = aliasSet.iterator();
+		while(iter.hasNext()){
+			AliasValue tmp = iter.next();
+			iter.remove();
 		}
 	}
 	
