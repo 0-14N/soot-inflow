@@ -25,6 +25,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import soot.Main;
 import soot.MethodOrMethodContext;
 import soot.PackManager;
 import soot.Scene;
@@ -68,6 +69,7 @@ public class Infoflow extends AbstractInfoflow {
     
     private Set<ResultsAvailableHandler> onResultsAvailable = new HashSet<ResultsAvailableHandler>();
     private Set<TaintPropagationHandler> taintPropagationHandlers = new HashSet<TaintPropagationHandler>();
+    private String sootArgs[] = new String[0];
 
 	/**
 	 * Creates a new instance of the InfoFlow class for analyzing plain Java code without any references to APKs or the Android SDK.
@@ -145,27 +147,28 @@ public class Infoflow extends AbstractInfoflow {
 			seeds = Collections.singleton(extraSeed);
 		addSceneTransformer(sourcesSinks, seeds);
 
-		Options.v().set_no_bodies_for_excluded(true);
-		Options.v().set_allow_phantom_refs(true);
-		if (debug)
+		Options.v().set_no_bodies_for_excluded(true);//==> "-no-bodies-for-excluded"
+		Options.v().set_allow_phantom_refs(true);//==> "-allow-phantom-refs"
+		if (debug){
 			Options.v().set_output_format(Options.output_format_shimple);
-		else
-			Options.v().set_output_format(Options.output_format_shimple);
-			//Options.v().set_output_format(Options.output_format_none);
-		Options.v().set_via_shimple(true);
-		Options.v().set_whole_shimple(true);
-		Options.v().setPhaseOption("wstp", "enabled:true");
-		//Options.v().set_whole_program(true);
-		Options.v().set_soot_classpath(path);
-		Options.v().set_process_dir(new ArrayList<String>(classes));
+		}else{
+			Options.v().set_output_format(Options.output_format_shimple);//==> "-f S"
+		}
+		Options.v().set_via_shimple(true);//==> "-via-shimple"
+		Options.v().set_whole_shimple(true);//==> "-ws"
+		Options.v().setPhaseOption("wstp", "enabled:true");//==>
+		Options.v().set_soot_classpath(path);//==> "-cp path"
+		Options.v().set_process_dir(new ArrayList<String>(classes));//==> "-process-path classes"
 
 		// Configure the callgraph algorithm
 		switch (callgraphAlgorithm) {
 			case AutomaticSelection:
-				if (extraSeed == null || extraSeed.isEmpty())
-					Options.v().setPhaseOption("cg.spark", "on");
-				else
-					Options.v().setPhaseOption("cg.spark", "vta:true");
+				if (extraSeed == null || extraSeed.isEmpty()){
+					Options.v().setPhaseOption("cg.spark", "on");//==> "-p cg.spark"
+				}
+				else{
+					Options.v().setPhaseOption("cg.spark", "vta:true");//==> "vta:true"
+				}
 				break;
 			case RTA:
 				Options.v().setPhaseOption("cg.spark", "on");
@@ -182,16 +185,20 @@ public class Infoflow extends AbstractInfoflow {
 		//jb.ulp -- Local packer: minimizes number of locals
 		//Options.v().setPhaseOption("jb.ulp", "off");
 		
-		Options.v().setPhaseOption("cg", "trim-clinit:false");
+		//Removes redundant static initializer calls
+		Options.v().setPhaseOption("cg", "trim-clinit:false");//==>"cg trim-clinit:false"
 		
 		if (!this.androidPath.isEmpty()) {
-			Options.v().set_src_prec(Options.src_prec_apk);
-			if (this.forceAndroidJar)
-				soot.options.Options.v().set_force_android_jar(this.androidPath);
-			else
-				soot.options.Options.v().set_android_jars(this.androidPath);
-		} else
+			Options.v().set_src_prec(Options.src_prec_apk);//==> "-src-prec apk"
+			if (this.forceAndroidJar){
+				soot.options.Options.v().set_force_android_jar(this.androidPath);//==>"-force-android-jar PATH"
+			}
+			else{
+				soot.options.Options.v().set_android_jars(this.androidPath);//==> "-android-jars PATH"
+			}
+		} else{
 			Options.v().set_src_prec(Options.src_prec_java);
+		}
 		
 		//at the end of setting: load user settings:
 		if (sootConfig != null)
@@ -199,6 +206,7 @@ public class Infoflow extends AbstractInfoflow {
 		
 		// load all entryPoint classes with their bodies
 		Scene.v().loadNecessaryClasses();
+		//Main.v().main(sootArgs);
 		boolean hasClasses = false;
 		for (String className : classes) {
 			SootClass c = Scene.v().forceResolve(className, SootClass.BODIES);
@@ -233,10 +241,11 @@ public class Infoflow extends AbstractInfoflow {
 		Scene.v().setEntryPoints(Collections.singletonList(entryPointCreator.createDummyMain(entryPoints)));
 
 		// We explicitly select the packs we want to run for performance reasons
-        PackManager.v().getPack("wspp").apply();
-        PackManager.v().getPack("cg").apply();
-        //PackManager.v().getPack("wjtp").apply();
-        PackManager.v().getPack("wstp").apply();
+        PackManager.v().getPack("wspp").apply();//==>
+        PackManager.v().getPack("cg").apply();//==>
+        PackManager.v().getPack("wjtp").apply();
+        PackManager.v().getPack("wstp").apply();//==>
+        //Main.v().main(args); ==>
 		if (debug)
 			PackManager.v().writeOutput();
 	}
@@ -270,7 +279,7 @@ public class Infoflow extends AbstractInfoflow {
 		// We explicitly select the packs we want to run for performance reasons
         PackManager.v().getPack("wspp").apply();
         PackManager.v().getPack("cg").apply();
-        //PackManager.v().getPack("wjtp").apply();
+        PackManager.v().getPack("wjtp").apply();
         PackManager.v().getPack("wstp").apply();
 		if (debug)
 			PackManager.v().writeOutput();
