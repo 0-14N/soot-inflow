@@ -2,6 +2,7 @@ package soot.shoon.android.analysis.entity;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -88,14 +89,16 @@ public class PathSummary {
 	 * @return ==
 	 */
 	public void deleteTaint(TaintValue taintValue){
-		for(TaintValue tv : taintsSet){
+		Iterator<TaintValue> iter = taintsSet.iterator();
+		while(iter.hasNext()){
+			TaintValue tv = iter.next();
 			if(tv == taintValue){
 				Set<AliasValue> aliases = tv.getAliases();
 				for(AliasValue alias : aliases){
 					aliasSet.remove(alias);
 				}
 				aliases.clear();
-				taintsSet.remove(tv);
+				iter.remove();
 			}
 		}
 	}
