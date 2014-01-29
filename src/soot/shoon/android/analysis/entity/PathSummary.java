@@ -21,10 +21,7 @@ public class PathSummary {
 	//initial MethodSummary
 	private MethodSummary initMethodSummary;
 	
-	//exit state
-	private List<StaticFieldRef> staticFields;
-	private TaintValue retTV;
-	private ArrayList<AliasValue> retAVs;
+	private SinglePathExitState spes;
 	
 	public PathSummary(ArrayList<Unit> allUnits){
 		this.invokeExprs = new ArrayList<InvokeExpr>();
@@ -32,8 +29,7 @@ public class PathSummary {
 		this.aliasSet = new HashSet<AliasValue>();
 		this.allUnits = allUnits;
 		this.initMethodSummary = null;
-		this.retTV = null;
-		this.retAVs = new ArrayList<AliasValue>();
+		this.spes = new SinglePathExitState(this);
 	}
 	
 	public void setInitMethodSummary(MethodSummary ms){
@@ -54,6 +50,10 @@ public class PathSummary {
 	
 	public int getPathLength(){
 		return allUnits.size();
+	}
+	
+	public SinglePathExitState getSinglePathExitState(){
+		return this.spes;
 	}
 	
 	public void addAlias(AliasValue aliasValue){
@@ -254,19 +254,20 @@ public class PathSummary {
 		return this.taintsSet;
 	}
 	
-	public TaintValue getRetTV(){
-		return this.retTV;
-	}
-	
-	public void setRetTV(TaintValue retTV){
-		this.retTV = retTV;
-	}
-	
-	public ArrayList<AliasValue> getRetAVs(){
-		return this.retAVs;
-	}
-	
-	public void addRetAV(AliasValue retAV){
-		this.retAVs.add(retAV);
+	public ArrayList<AliasValue> getAllAliases(Value base, Unit currUnit){
+		ArrayList<AliasValue> result = new ArrayList<AliasValue>();
+		for(AliasValue av : aliasSet){
+			int activationIndex = 0;
+			if(av.getActivationUnit() == null){
+				activationIndex = av.getActivationIndex();
+			}else{
+				activationIndex = allUnits.indexOf(av.getActivationUnit());
+			}
+			if(av.isWithinAccessPath(base) &&
+					allUnits.indexOf(currUnit) > activationIndex){
+				result.add(av);
+			}
+		}
+		return result;
 	}
 }

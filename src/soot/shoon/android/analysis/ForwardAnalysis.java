@@ -82,13 +82,13 @@ public class ForwardAnalysis {
 					ArrayList<AliasValue> paramAVs = null;
 					//this
 					if(rv instanceof ThisRef){
-						paramTV = spa.getPathSummary().getInitMethodSummary().getThisTV();
-						paramAVs = spa.getPathSummary().getInitMethodSummary().getThisAVs();
+						paramTV = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getThisTV();
+						paramAVs = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getThisAVs();
 					}else if(rv instanceof ParameterRef){
 						ParameterRef pr = (ParameterRef) rv;
 						int index = pr.getIndex();
-						paramTV = spa.getPathSummary().getInitMethodSummary().getArgTaintValue(index);
-						paramAVs = spa.getPathSummary().getInitMethodSummary().getArgAliasValues(index);
+						paramTV = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgTaintValue(index);
+						paramAVs = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgAliasValues(index);
 					}
 					if(paramTV != null){
 						Value tmp = paramTV.getTaintValue();
@@ -203,16 +203,16 @@ public class ForwardAnalysis {
 						TaintValue tmpTV = null;
 						AliasValue tmpAV = null;
 						int argsCount = args.size();
-						calleeMS.initArgs(argsCount);
+						calleeMS.getMethodInitState().initArgs(argsCount);
 						//handle "this"
 						if(!callee.isStatic()){
 							Value base = ((InstanceInvokeExpr)invokeExpr).getBase();
 							if((tmpTV = spa.getPathSummary().isTainted(base, currUnit)) != null
 								|| (tmpTV = spa.getPathSummary().isTaintBase(base, currUnit)) != null){
-								calleeMS.setThisTV(tmpTV);
+								calleeMS.getMethodInitState().setThisTV(tmpTV);
 							}else if((tmpAV = spa.getPathSummary().isAlias(base, currUnit)) != null
 									|| (tmpAV = spa.getPathSummary().isAliasBase(base, currUnit)) != null){
-								calleeMS.addThisAV(tmpAV);
+								calleeMS.getMethodInitState().addThisAV(tmpAV);
 							}
 						}
 						//handle the args
@@ -220,10 +220,10 @@ public class ForwardAnalysis {
 							Value arg = args.get(i);
 							if((tmpTV = spa.getPathSummary().isTainted(arg, currUnit)) != null
 									|| (tmpTV = spa.getPathSummary().isTaintBase(arg, currUnit)) != null){
-								calleeMS.setArgTaintValue(i, tmpTV);
+								calleeMS.getMethodInitState().setArgTaintValue(i, tmpTV);
 							}else if((tmpAV = spa.getPathSummary().isAlias(arg, currUnit)) != null
 									|| (tmpAV = spa.getPathSummary().isAliasBase(arg, currUnit)) != null){
-								calleeMS.addArgAliasValue(i, tmpAV);
+								calleeMS.getMethodInitState().addArgAliasValue(i, tmpAV);
 							}
 						}
 						sma.start();
@@ -247,8 +247,11 @@ public class ForwardAnalysis {
 				TaintValue retTV = null;
 				//rv is tainted
 				if((retTV = spa.getPathSummary().isTainted(retV, currUnit)) != null){
-					spa.getPathSummary().setRetTV(retTV);
+					spa.getPathSummary().getSinglePathExitState().setRetTV(retTV);
 				}
+				//rv is an alias
+				ArrayList<AliasValue> retAVs = spa.getPathSummary().getAllAliases(retV, currUnit);
+				
 			}else if(currUnit instanceof ReturnVoidStmt){
 				ReturnVoidStmt rvs = (ReturnVoidStmt) currUnit;
 			}
