@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import soot.Unit;
 import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
+import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.PathSummary;
 
 public class SinglePathAnalysis {
@@ -43,4 +44,5 @@ public class SinglePathAnalysis {
 	public MethodAnalysisType getMethodAnalysisType(){
 		return this.mat;
 	}
+	
 }

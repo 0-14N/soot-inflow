@@ -130,4 +130,24 @@ public class AliasValue {
 		return result;
 	}
 	
+	public boolean myEquals(Object o){
+		boolean result = false;
+		if(o instanceof AliasValue){
+			AliasValue av = (AliasValue) o;
+			if(aliasBase.toString().equals(av.getAliasBase().toString())){
+				ArrayList<SootFieldRef> fieldRefs = av.getAccessPath();
+				if(fieldRefs.size() == this.accessPath.size()){
+					int length = this.accessPath.size();
+					for(int i = 0; i < length; i++){
+						if(!this.accessPath.get(i).toString().equals(fieldRefs.get(i).toString())){
+							break;
+						}
+					}
+					result = true;
+				}
+			}
+		}
+		return result;
+	}
+	
 }

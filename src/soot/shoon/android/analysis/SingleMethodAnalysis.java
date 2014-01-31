@@ -39,7 +39,7 @@ public class SingleMethodAnalysis {
 		this.activationUnit = this.activationBlock.getHead();
 		this.type = type;
 		this.paths = MethodPathCreator.v().getPaths(this.ccbg);
-		this.methodSummary = new MethodSummary();
+		this.methodSummary = new MethodSummary(this);
 	}
 	
 	public SingleMethodAnalysis(SootMethod method, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
@@ -49,7 +49,7 @@ public class SingleMethodAnalysis {
 		this.activationUnit = activationUnit;
 		this.type = type;
 		this.paths = MethodPathCreator.v().getPaths(this.ccbg);
-		this.methodSummary = new MethodSummary();
+		this.methodSummary = new MethodSummary(this);
 	}
 	
 	public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit){
@@ -59,7 +59,7 @@ public class SingleMethodAnalysis {
 		this.activationUnit = activationUnit;
 		this.type = MethodAnalysisType.SourceContainer;
 		this.paths = MethodPathCreator.v().getPaths(ccbg);
-		this.methodSummary = new MethodSummary();
+		this.methodSummary = new MethodSummary(this);
 	}
 	
 	public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
@@ -69,7 +69,7 @@ public class SingleMethodAnalysis {
 		this.activationUnit = activationUnit;
 		this.type = type;
 		this.paths = MethodPathCreator.v().getPaths(ccbg);
-		this.methodSummary = new MethodSummary();
+		this.methodSummary = new MethodSummary(this);
 	}
 	
 	public MethodSummary getMethodSummary(){
@@ -121,4 +121,9 @@ public class SingleMethodAnalysis {
 	public ClassicCompleteBlockGraph getCCBG(){
 		return this.ccbg;
 	}
+	
+	public SootMethod getMethod(){
+		return this.method;
+	}
+	
 }

@@ -77,5 +77,14 @@ public class TaintValue {
 	}
 	
 	
-	
+	public boolean myEquals(Object o){
+		boolean result = false;
+		if(o instanceof TaintValue){
+			TaintValue tv = (TaintValue) o;
+			if(tv.getTaintValue().toString().equals(this.taintValue.toString())){
+				result = true;
+			}
+		}
+		return result;
+	}
 }

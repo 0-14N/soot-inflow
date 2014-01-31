@@ -254,6 +254,10 @@ public class PathSummary {
 		return this.taintsSet;
 	}
 	
+	public Set<AliasValue> getAliasValues(){
+		return this.aliasSet;
+	}
+	
 	public ArrayList<AliasValue> getAllAliases(Value base, Unit currUnit){
 		ArrayList<AliasValue> result = new ArrayList<AliasValue>();
 		for(AliasValue av : aliasSet){
@@ -270,4 +274,5 @@ public class PathSummary {
 		}
 		return result;
 	}
+	
 }

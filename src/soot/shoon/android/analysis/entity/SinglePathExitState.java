@@ -6,7 +6,7 @@ import java.util.List;
 import soot.jimple.StaticFieldRef;
 
 public class SinglePathExitState {
-	//exit state
+		//exit state
 		private List<StaticFieldRef> staticFields;
 		private TaintValue retTV;
 		private ArrayList<AliasValue> retAVs;
@@ -34,5 +34,9 @@ public class SinglePathExitState {
 		
 		public void addRetAV(AliasValue retAV){
 			this.retAVs.add(retAV);
+		}
+		
+		public void addAllRetAVs(ArrayList<AliasValue> retAVs){
+			this.retAVs.addAll(retAVs);
 		}
 }

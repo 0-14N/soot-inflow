@@ -227,6 +227,7 @@ public class ForwardAnalysis {
 							}
 						}
 						sma.start();
+						logger.info("Method {} exit!", sma.getMethod().getName());
 					}
 				}
 				//********* this is a sink ********
@@ -251,15 +252,12 @@ public class ForwardAnalysis {
 				}
 				//rv is an alias
 				ArrayList<AliasValue> retAVs = spa.getPathSummary().getAllAliases(retV, currUnit);
-				
-			}else if(currUnit instanceof ReturnVoidStmt){
-				ReturnVoidStmt rvs = (ReturnVoidStmt) currUnit;
+				spa.getPathSummary().getSinglePathExitState().addAllRetAVs(retAVs);
 			}
 			
 			currIndex++;
 		}
 	}
-
 	
 	private void foundNewTaint(Unit currUnit, Value lv){
 		if(spa.getPathSummary().alreadyInTaintsSet(currUnit, lv)){
