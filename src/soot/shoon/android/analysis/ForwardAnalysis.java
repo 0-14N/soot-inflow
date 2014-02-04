@@ -27,6 +27,7 @@ import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
 import soot.shoon.android.analysis.entity.AliasValue;
+import soot.shoon.android.analysis.entity.MergedExitState;
 import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
 
@@ -226,8 +227,15 @@ public class ForwardAnalysis {
 								calleeMS.getMethodInitState().addArgAliasValue(i, tmpAV);
 							}
 						}
+						//start the callee analysis and merge the path summaries
 						sma.start();
-						logger.info("Method {} exit!", sma.getMethod().getName());
+						sma.getMethodSummary().mergePathSummaries();
+						//next, we should merge callee's exit state with caller's current path state
+						MergedExitState calleeMES = sma.getMethodSummary().getMergedExitState();
+						TaintValue exitThisTV = calleeMES.getMergedExitThisTV();
+						ArrayList<AliasValue> exitThisAVs = calleeMES.getMergedExitThisAVs();
+						ArrayList<TaintValue> exitArgTVs = calleeMES.getMergedExitArgTVs();
+						ArrayList<ArrayList<AliasValue>> exitArgAVs = calleeMES.getMergedExitArgAVs();
 					}
 				}
 				//********* this is a sink ********

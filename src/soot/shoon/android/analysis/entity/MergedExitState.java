@@ -22,6 +22,50 @@ public class MergedExitState {
 		this.mergedRetAVs = new ArrayList<AliasValue>();
 	}
 	
+	
+	
+	public TaintValue getMergedExitThisTV() {
+		return mergedExitThisTV;
+	}
+
+
+
+	public ArrayList<AliasValue> getMergedExitThisAVs() {
+		return mergedExitThisAVs;
+	}
+
+
+
+	public ArrayList<TaintValue> getMergedExitArgTVs() {
+		return mergedExitArgTVs;
+	}
+
+
+
+	public ArrayList<ArrayList<AliasValue>> getMergedExitArgAVs() {
+		return mergedExitArgAVs;
+	}
+
+
+
+	public List<StaticFieldRef> getStaticFields() {
+		return staticFields;
+	}
+
+
+
+	public TaintValue getMergedRetTV() {
+		return mergedRetTV;
+	}
+
+
+
+	public ArrayList<AliasValue> getMergedRetAVs() {
+		return mergedRetAVs;
+	}
+
+
+
 	public void initExitState(int argsCount){
 		this.mergedExitArgTVs = new ArrayList<TaintValue>(argsCount);
 		for(int i = 0; i < argsCount; i++){

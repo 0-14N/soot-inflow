@@ -35,6 +35,10 @@ public class MethodSummary {
 		return this.mis;
 	}
 	
+	public MergedExitState getMergedExitState(){
+		return this.mes;
+	}
+	
 	public void addPathSummary(ArrayList<Block>path, PathSummary ps){
 		this.pathSummaries.put(path, ps);
 	}
@@ -49,10 +53,10 @@ public class MethodSummary {
 			PathSummary ps = (PathSummary) ((Entry)iter.next()).getValue();
 			Set<TaintValue> tvSet = ps.getTaintsSet();
 			Set<AliasValue> avSet = ps.getAliasValues();
-			SinglePathExitState spes = ps.getSinglePathExitState();
 			TaintValue retTV = ps.getSinglePathExitState().getRetTV();
 			ArrayList<AliasValue> retAVs = ps.getSinglePathExitState().getRetAVs();
-			
+		
+			//taint values
 			Iterator<TaintValue> tvIter = tvSet.iterator();
 			while(tvIter.hasNext()){
 				TaintValue tv = tvIter.next();
@@ -66,28 +70,36 @@ public class MethodSummary {
 						Value base = ifr.getBase();
 						SootFieldRef sfr = ifr.getFieldRef();
 						//this
-						if(base.toString().equals("r0")){
+						if(base.toString().equals("$r0")){
 							AliasValue newAV = new AliasValue(null, null, base);
 							newAV.appendField(sfr);
 							this.mes.addExitThisAV(newAV);
 						}else{
-							int regIndex = Integer.parseInt(base.toString().substring(1));
-							if(regIndex > 0 && regIndex <= argsCount){
-								AliasValue newAV = new AliasValue(null, null, base);
-								newAV.appendField(sfr);
-								this.mes.addExitArgAV(regIndex - 1, newAV);
+							try{
+								int regIndex = Integer.parseInt(base.toString().substring(2));
+								if(regIndex > 0 && regIndex <= argsCount){
+									AliasValue newAV = new AliasValue(null, null, base);
+									newAV.appendField(sfr);
+									this.mes.addExitArgAV(regIndex - 1, newAV);
+								}
+							}catch(NumberFormatException nfe){
+								continue;
 							}
 						}
 					}else{//rn
 						//this
-						if(v.toString().equals("r0")){
+						if(v.toString().equals("$r0")){
 							TaintValue newTV = new TaintValue(null, v);
 							this.mes.setExitThisTV(newTV);
 						}else{
-							int regIndex = Integer.parseInt(v.toString().substring(1));
-							if(regIndex > 0 && regIndex <= argsCount){
-								TaintValue newTV = new TaintValue(null, v);
-								this.mes.setExitArgTV(regIndex - 1, newTV);
+							try{
+								int regIndex = Integer.parseInt(v.toString().substring(2));
+								if(regIndex > 0 && regIndex <= argsCount){
+									TaintValue newTV = new TaintValue(null, v);
+									this.mes.setExitArgTV(regIndex - 1, newTV);
+								}
+							}catch(NumberFormatException nfe){
+								continue;
 							}
 						}
 					}
@@ -96,7 +108,8 @@ public class MethodSummary {
 					assert(true == false);
 				}
 			}
-			
+		
+			//alias values
 			Iterator<AliasValue> avIter = avSet.iterator();
 			while(avIter.hasNext()){
 				AliasValue av = avIter.next();
@@ -105,26 +118,56 @@ public class MethodSummary {
 				
 				if(!sma.getMethod().isStatic()){
 					//this
-					if(base.toString().equals("r0")){
+					if(base.toString().equals("$r0")){
 						AliasValue newAV = new AliasValue(null, null, base);
 						for(SootFieldRef sfr : accessPath){
 							newAV.appendField(sfr);
 						}
 						this.mes.addExitThisAV(newAV);
 					}else{
-						int regIndex = Integer.parseInt(base.toString().substring(1));
-						if(regIndex > 0 && regIndex <= argsCount){
-							AliasValue newAV = new AliasValue(null, null, base);
-							for(SootFieldRef sfr : accessPath){
-								newAV.appendField(sfr);
+						try{
+							int regIndex = Integer.parseInt(base.toString().substring(2));
+							if(regIndex > 0 && regIndex <= argsCount){
+								AliasValue newAV = new AliasValue(null, null, base);
+								for(SootFieldRef sfr : accessPath){
+									newAV.appendField(sfr);
+								}
+								this.mes.addExitArgAV(regIndex - 1, newAV);
 							}
-							this.mes.addExitArgAV(regIndex, newAV);
+						}catch(NumberFormatException nfe){
+							continue;
 						}
 					}
 				}else{
 					//TODO
 					assert(true == false);
 				}
+			}
+			
+			//return taint value
+			if(retTV != null){
+				if(retTV instanceof InstanceFieldRef){
+					InstanceFieldRef ifr = (InstanceFieldRef) retTV;
+					Value base = ifr.getBase();
+					SootFieldRef sfr = ifr.getFieldRef();
+					AliasValue newAV = new AliasValue(null, null, base);
+					newAV.appendField(sfr);
+					this.mes.addRetAV(newAV);
+				}else{
+					TaintValue newTV = new TaintValue(null, retTV.getTaintValue());
+					this.mes.setRetTV(newTV);
+				}
+			}
+			
+			//return alias values
+			for(AliasValue retAV : retAVs){
+				Value base = retAV.getAliasBase();
+				ArrayList<SootFieldRef> accessPath = retAV.getAccessPath();
+				AliasValue newAV = new AliasValue(null, null, base);
+				for(SootFieldRef sfr : accessPath){
+					newAV.appendField(sfr);
+				}
+				this.mes.addRetAV(newAV);
 			}
 		}
 	}
