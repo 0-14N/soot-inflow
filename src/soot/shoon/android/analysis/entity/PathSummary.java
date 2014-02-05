@@ -57,21 +57,15 @@ public class PathSummary {
 	}
 	
 	public void addAlias(AliasValue aliasValue){
-		boolean existed = false;
-		for(AliasValue av : aliasSet){
-			//TODO need enhancement
-			if(av.getActivationUnit() == aliasValue.getActivationUnit()){
-				existed = true;
-				break;
-			}
-		}
-		if(!existed){
+		if(!isInAliasSet(aliasValue)){
 			this.aliasSet.add(aliasValue);
 		}
 	}
 	
 	public void addTaintValue(TaintValue tv){
-		this.taintsSet.add(tv);
+		if(!isInTaintSet(tv)){
+			this.taintsSet.add(tv);
+		}
 	}
 	
 	public boolean invokeExparHandled(InvokeExpr ie){
@@ -148,6 +142,29 @@ public class PathSummary {
 		}
 	}
 	
+	private boolean isInTaintSet(TaintValue newTV){
+		boolean result = false;
+		for(TaintValue tv : taintsSet){
+			if(tv.myEquals(newTV)){
+				result = true;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	private boolean isInAliasSet(AliasValue newAV){
+		boolean result = false;
+		for(AliasValue av : aliasSet){
+			if(av.myEquals(newAV)){
+				result = true;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	//this method is used to judge whether the statement (which produces taints) has been analyzed
 	public boolean alreadyInTaintsSet(Unit currUnit, Value lv){
 		boolean result = false;
 		for(TaintValue tv : taintsSet){

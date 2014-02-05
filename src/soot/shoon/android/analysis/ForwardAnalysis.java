@@ -205,9 +205,11 @@ public class ForwardAnalysis {
 						AliasValue tmpAV = null;
 						int argsCount = args.size();
 						calleeMS.getMethodInitState().initArgs(argsCount);
+						//the object of instance method invoking
+						Value base = null;
 						//handle "this"
 						if(!callee.isStatic()){
-							Value base = ((InstanceInvokeExpr)invokeExpr).getBase();
+							base = ((InstanceInvokeExpr)invokeExpr).getBase();
 							if((tmpTV = spa.getPathSummary().isTainted(base, currUnit)) != null
 								|| (tmpTV = spa.getPathSummary().isTaintBase(base, currUnit)) != null){
 								calleeMS.getMethodInitState().setThisTV(tmpTV);
@@ -230,12 +232,78 @@ public class ForwardAnalysis {
 						//start the callee analysis and merge the path summaries
 						sma.start();
 						sma.getMethodSummary().mergePathSummaries();
+						
 						//next, we should merge callee's exit state with caller's current path state
 						MergedExitState calleeMES = sma.getMethodSummary().getMergedExitState();
 						TaintValue exitThisTV = calleeMES.getMergedExitThisTV();
 						ArrayList<AliasValue> exitThisAVs = calleeMES.getMergedExitThisAVs();
 						ArrayList<TaintValue> exitArgTVs = calleeMES.getMergedExitArgTVs();
 						ArrayList<ArrayList<AliasValue>> exitArgAVs = calleeMES.getMergedExitArgAVs();
+						TaintValue exitRetTV = calleeMES.getMergedRetTV();
+						ArrayList<AliasValue> exitRetAVs = calleeMES.getMergedRetAVs();
+						//this's return taint value
+						if(base != null && exitThisTV != null){
+							//this is not tainted before invoking, taints it
+							if(spa.getPathSummary().isTainted(base, currUnit) == null){
+								TaintValue newExitThisTV = new TaintValue(currUnit, base);
+								spa.getPathSummary().addTaintValue(newExitThisTV);
+							}
+						}
+						//this's return alias values
+						if(base != null && exitThisAVs.size() > 0){
+							for(AliasValue av : exitThisAVs){
+								AliasValue newExitThisAV = new AliasValue(currUnit, null, base);
+								ArrayList<SootFieldRef> accessPath = av.getAccessPath();
+								for(SootFieldRef sfr : accessPath){
+									newExitThisAV.appendField(sfr);
+								}
+								spa.getPathSummary().addAlias(newExitThisAV);
+							}
+						}
+						//args' return taint values & args' return alias values
+						if(argsCount > 0){
+							for(int i = 0; i < argsCount; i++){
+								Value arg = args.get(i);
+								//taint values
+								TaintValue argTV = exitArgTVs.get(i);
+								if(argTV != null){
+									if(spa.getPathSummary().isTainted(arg, currUnit) == null){
+										TaintValue newExitArgTV = new TaintValue(currUnit, arg);
+										spa.getPathSummary().addTaintValue(newExitArgTV);
+									}
+								}
+								//alias values
+								ArrayList<AliasValue> argAVs = exitArgAVs.get(i);
+								if(argAVs != null && argAVs.size() > 0){
+									for(AliasValue argAV : argAVs){
+										AliasValue newExitArgAV = new AliasValue(currUnit, null, arg);
+										ArrayList<SootFieldRef> accessPath = argAV.getAccessPath();
+										for(SootFieldRef sfr : accessPath){
+											newExitArgAV.appendField(sfr);
+										}
+										spa.getPathSummary().addAlias(newExitArgAV);
+									}
+								}
+							}
+						}
+						//ret's return taint value
+						if(retValue != null && exitRetTV != null){
+							if(spa.getPathSummary().isTainted(retValue, currUnit) == null){
+								TaintValue newExitRetTV = new TaintValue(currUnit, retValue);
+								spa.getPathSummary().addTaintValue(newExitRetTV);
+							}
+						}
+						//ret's return alias values
+						if(retValue != null && exitRetAVs.size() > 0){
+							for(AliasValue av : exitRetAVs){
+								AliasValue newExitRetAV = new AliasValue(currUnit, null, retValue);
+								ArrayList<SootFieldRef> accessPath = av.getAccessPath();
+								for(SootFieldRef sfr : accessPath){
+									newExitRetAV.appendField(sfr);
+								}
+								spa.getPathSummary().addAlias(newExitRetAV);
+							}
+						}
 					}
 				}
 				//********* this is a sink ********
