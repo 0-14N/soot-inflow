@@ -15,9 +15,11 @@ import org.slf4j.LoggerFactory;
 import soot.SootClass;
 import soot.SootFieldRef;
 import soot.SootMethod;
+import soot.SootMethodRef;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.InstanceFieldRef;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
@@ -28,6 +30,7 @@ import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
 import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.MergedExitState;
+import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.PathSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
@@ -156,12 +159,95 @@ public class AnalysisManager {
 			assert(sinkTriggerUnit instanceof AssignStmt || sinkTriggerUnit instanceof InvokeStmt);
 			InvokeExpr invokeExpr = null;
 			Value thisBase = null;
+			int argsCount = 0;
+			List<Value> args = null;
 			
 			if(sinkTriggerUnit instanceof AssignStmt){
-				
+				invokeExpr = (InvokeExpr) ((AssignStmt) sinkTriggerUnit).getRightOp();
+			}else if(sinkTriggerUnit instanceof InvokeStmt){
+				invokeExpr = ((InvokeStmt) sinkTriggerUnit).getInvokeExpr();
 			}
+			assert(invokeExpr != null);
+			argsCount = invokeExpr.getArgCount();
+			args = invokeExpr.getArgs();
+		
+			//get the callee on sink path
+			SootMethodRef smr = invokeExpr.getMethodRef();
+			String className = smr.declaringClass().getName();
+			String methodName = smr.name();
+			SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
 			
+			if(callee != null){
+				SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
+				MethodSummary calleeMS = sma.getMethodSummary();
+				calleeMS.getMethodInitState().initArgs(argsCount);
+		
+				TaintValue tmpTV = null;
+				Set<AliasValue> tmpAVs = null;
+				//this's taint value and alias values
+				if(!callee.isStatic()){
+					thisBase = ((InstanceInvokeExpr) invokeExpr).getBase();
+					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), thisBase)) != null){
+						calleeMS.getMethodInitState().setThisTV(tmpTV);
+					}
+					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), thisBase)).size() > 0){
+						for(AliasValue av : tmpAVs){
+							calleeMS.getMethodInitState().addThisAV(av);
+						}
+					}
+				}
+				
+				//args' taint values and alias values
+				for(int i = 0; i < argsCount; i++){
+					Value arg = args.get(i);
+					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), arg)) != null){
+						calleeMS.getMethodInitState().setArgTaintValue(i, tmpTV);
+					}
+					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), arg)).size() > 0){
+						for(AliasValue av : tmpAVs){
+							calleeMS.getMethodInitState().addArgAliasValue(i, av);
+						}
+					}
+				}
+				
+				sma.start();
+			}
 		}
+	}
+	
+	private TaintValue isTainted(Set<TaintValue> taintsSet, Value value){
+		TaintValue result = null;
+		for(TaintValue tv : taintsSet){
+			if(tv.getTaintValue().toString().equals(value.toString())){
+				result = tv;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	private Set<AliasValue> isAliasValue(Set<AliasValue> aliasSet, Value value){
+		Set<AliasValue> result = new HashSet<AliasValue>();
+		for(AliasValue av : aliasSet){
+			if(value instanceof InstanceFieldRef){
+				ArrayList<SootFieldRef> accessPath = av.getAccessPath();
+				if(accessPath != null && accessPath.size() > 0){
+					InstanceFieldRef ifr = (InstanceFieldRef) value;
+					Value base = ifr.getBase();
+					SootFieldRef sfr = ifr.getFieldRef();
+					if(av.getAliasBase().toString().equals(base.toString()) &&
+							accessPath.get(0).toString().equals(sfr.toString())){
+						result.add(av);
+					}
+				}
+			}else{
+				if(av.getAliasBase().toString().equals(value.toString())){
+					result.add(av);
+					break;
+				}
+			}
+		}
+		return result;
 	}
 	
 	private void collectSourceExitStates(PathSummary tmpSummary, Unit sourceTrigger, Set<MergedExitState> stateSet){

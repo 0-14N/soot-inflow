@@ -2,6 +2,7 @@ package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,27 +126,29 @@ public class ForwardAnalysis {
 				}
 				
 				//if this a source
-				AliasValue tmpAV = null;
+				Set<AliasValue> tmpAVs = null;
 				TaintValue tmpTV = null;
 				if(issm.isSource(s, icfg)){
 					foundNewTaint(currUnit, lv);
 				}else if(spa.getPathSummary().isTainted(rv, currUnit) != null){//rv is in taintsSet
 					foundNewTaint(currUnit, lv);
-				}else if(spa.getPathSummary().isAlias(rv, currUnit) != null){
+				}else if(spa.getPathSummary().isAlias(rv, currUnit).size() > 0){
 					foundNewTaint(currUnit, lv);
 				}else{// the right value is not tainted
 					//if the left value is already tainted
 					if((tmpTV = spa.getPathSummary().isTainted(lv, currUnit)) != null){
 						spa.getPathSummary().deleteTaint(tmpTV);
-					}else if((tmpAV = spa.getPathSummary().isAlias(lv, currUnit)) != null){//if the left value is an alias
-						spa.getPathSummary().deleteAlias(tmpAV);
+					}else if((tmpAVs = spa.getPathSummary().isAlias(lv, currUnit)).size() > 0){//if the left value is an alias
+						for(AliasValue tmpAV : tmpAVs){
+							spa.getPathSummary().deleteAlias(tmpAV);
+						}
 					}
 					//if the right value is an alias's base, produce a new alias
 					//or 
 					//p0.f = tainted_value; ——————————— p0.f is tainted
 					//p1 = p0; ————————————————- p1.f is an alias ********************bug issue3
 					//sink(p1.f); ————————————————  
-					if((tmpAV = spa.getPathSummary().isAliasBase(rv, currUnit)) != null){
+					if((tmpAVs = spa.getPathSummary().isAliasBase(rv, currUnit)).size() > 0){
 						Value base = null;
 						if(rv instanceof InstanceFieldRef){
 							InstanceFieldRef ifr = (InstanceFieldRef) rv;
@@ -153,12 +156,14 @@ public class ForwardAnalysis {
 						}else{
 							base = rv;
 						}
-						AliasValue av = new AliasValue(currUnit, tmpAV.getSource(), base);
-						ArrayList<SootFieldRef> accessPath = tmpAV.getAccessPath();
-						for(int i = 0; i < accessPath.size(); i++){
-							av.appendField(accessPath.get(i));
+						for(AliasValue tmpAV : tmpAVs){
+							AliasValue av = new AliasValue(currUnit, tmpAV.getSource(), base);
+							ArrayList<SootFieldRef> accessPath = tmpAV.getAccessPath();
+							for(int i = 0; i < accessPath.size(); i++){
+								av.appendField(accessPath.get(i));
+							}
+							spa.getPathSummary().addAlias(av);
 						}
-						spa.getPathSummary().addAlias(av);
 					}else if((tmpTV = spa.getPathSummary().isTaintBase(rv, currUnit)) != null){//issue 3
 						InstanceFieldRef ifr = (InstanceFieldRef) tmpTV.getTaintValue();
 						AliasValue av = new AliasValue(currUnit, tmpTV, lv);
@@ -208,7 +213,7 @@ public class ForwardAnalysis {
 						MethodSummary calleeMS = sma.getMethodSummary();
 						List<Value> args = invokeExpr.getArgs();
 						TaintValue tmpTV = null;
-						AliasValue tmpAV = null;
+						Set<AliasValue> tmpAVs = null;
 						int argsCount = args.size();
 						calleeMS.getMethodInitState().initArgs(argsCount);
 						//the object of instance method invoking
@@ -219,9 +224,11 @@ public class ForwardAnalysis {
 							if((tmpTV = spa.getPathSummary().isTainted(base, currUnit)) != null
 								|| (tmpTV = spa.getPathSummary().isTaintBase(base, currUnit)) != null){
 								calleeMS.getMethodInitState().setThisTV(tmpTV);
-							}else if((tmpAV = spa.getPathSummary().isAlias(base, currUnit)) != null
-									|| (tmpAV = spa.getPathSummary().isAliasBase(base, currUnit)) != null){
-								calleeMS.getMethodInitState().addThisAV(tmpAV);
+							}else if((tmpAVs = spa.getPathSummary().isAlias(base, currUnit)).size() > 0
+									|| (tmpAVs = spa.getPathSummary().isAliasBase(base, currUnit)).size() > 0){
+								for(AliasValue tmpAV : tmpAVs){
+									calleeMS.getMethodInitState().addThisAV(tmpAV);
+								}
 							}
 						}
 						//handle the args
@@ -230,9 +237,11 @@ public class ForwardAnalysis {
 							if((tmpTV = spa.getPathSummary().isTainted(arg, currUnit)) != null
 									|| (tmpTV = spa.getPathSummary().isTaintBase(arg, currUnit)) != null){
 								calleeMS.getMethodInitState().setArgTaintValue(i, tmpTV);
-							}else if((tmpAV = spa.getPathSummary().isAlias(arg, currUnit)) != null
-									|| (tmpAV = spa.getPathSummary().isAliasBase(arg, currUnit)) != null){
-								calleeMS.getMethodInitState().addArgAliasValue(i, tmpAV);
+							}else if((tmpAVs = spa.getPathSummary().isAlias(arg, currUnit)).size() > 0
+									|| (tmpAVs = spa.getPathSummary().isAliasBase(arg, currUnit)).size() > 0){
+								for(AliasValue tmpAV : tmpAVs){
+									calleeMS.getMethodInitState().addArgAliasValue(i, tmpAV);
+								}
 							}
 						}
 						

@@ -201,8 +201,8 @@ public class PathSummary {
 	 * @param currUnit
 	 * @return ==
 	 */
-	public AliasValue isAlias(Value value, Unit currUnit){
-		AliasValue result = null;
+	public Set<AliasValue> isAlias(Value value, Unit currUnit){
+		Set<AliasValue> result = new HashSet<AliasValue>();
 		if(value instanceof InstanceFieldRef){
 			for(AliasValue av : aliasSet){
 				TaintValue tv = av.getSource();
@@ -213,8 +213,7 @@ public class PathSummary {
 					activationIndex = allUnits.indexOf(tv.getActivation());
 				}
 				if(av.isMe((InstanceFieldRef)value) && activationIndex < allUnits.indexOf(currUnit)){
-					result = av;
-					break;
+					result.add(av);
 				}
 			}
 		}
@@ -230,14 +229,13 @@ public class PathSummary {
 	 * @param value
 	 * @return ==
 	 */
-	public AliasValue isAliasBase(Value value, Unit currUnit){
-		AliasValue result = null;
+	public Set<AliasValue> isAliasBase(Value value, Unit currUnit){
+		Set<AliasValue> result = new HashSet<AliasValue>();
 		for(AliasValue av : aliasSet){
 			Unit activation = av.getActivationUnit();
 			if(allUnits.indexOf(currUnit) > allUnits.indexOf(activation)){
 				if(av.isWithinAccessPath(value)){
-					result = av;
-					break;
+					result.add(av);
 				}
 			}
 		}
