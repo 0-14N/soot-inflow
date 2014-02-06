@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import soot.SootMethod;
 import soot.Unit;
+import soot.shoon.android.analysis.entity.MergedExitState;
 import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.PathSummary;
 import soot.toolkits.graph.Block;
@@ -24,6 +25,9 @@ public class SingleMethodAnalysis {
 	private ArrayList<ArrayList<Block>> paths;
 	
 	private MethodSummary methodSummary;
+	
+	//if this is a caller, the exit state of the callee
+	private MergedExitState mes = null;
 	
 	public enum MethodAnalysisType{
 		SourceContainer,
@@ -76,6 +80,11 @@ public class SingleMethodAnalysis {
 		return this.methodSummary;
 	}
 	
+	public void setExitState(MergedExitState mes){
+		assert(this.type == MethodAnalysisType.Caller);
+		this.mes = mes;
+	}
+	
 	public void start(){
 		//this method contains a source invoking
 		if(this.type == MethodAnalysisType.SourceContainer){
@@ -90,7 +99,15 @@ public class SingleMethodAnalysis {
 					analyzeSinglePath(path);
 				}
 			}
+		}else if(this.type == MethodAnalysisType.Caller){
+			for(ArrayList<Block> path : paths){
+				if(path.contains(activationBlock)){
+					analyzeSinglePath(path);
+				}
+			}
 		}
+		//although the code is the same, maybe there will be something specific to be handled
+		//in different situations
 	}
 	
 	private void analyzeSinglePath(ArrayList<Block> path){
@@ -113,6 +130,14 @@ public class SingleMethodAnalysis {
 			//TODO pSummay need to be initialized
 			pSummary.setInitMethodSummary(methodSummary);
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
+			spa.start();
+			methodSummary.addPathSummary(path, pSummary);
+		}else if(this.type == MethodAnalysisType.Caller){
+			assert(mes != null);
+			PathSummary pSummary = new PathSummary(allUnits);
+			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
+			//initialize the callee's exit state to this caller's current path state
+			assert(activationUnit)
 			spa.start();
 			methodSummary.addPathSummary(path, pSummary);
 		}

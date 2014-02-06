@@ -3,6 +3,7 @@ package soot.shoon.android.analysis;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -18,7 +19,10 @@ import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.jimple.infoflow.taintWrappers.EasyTaintWrapper;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
+import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
+import soot.shoon.android.analysis.entity.MergedExitState;
 import soot.toolkits.graph.Block;
+import soot.toolkits.graph.ClassicCompleteBlockGraph;
 
 public class AnalysisManager {
 	private static AnalysisManager instance;
@@ -84,6 +88,7 @@ public class AnalysisManager {
 		sources.add(sma);
 	}
 	
+	
 	public void addSink(Block b, Unit u){
 		Set<Unit> set = sinks.get(b);
 		if(set == null)
@@ -100,10 +105,58 @@ public class AnalysisManager {
 		set.add(sm);
 		allReachableMethods.put(sc, set);
 	}
-	
+
+	//start analysis at methods that contain statements invoke source
 	public void start(){
 		for(SingleMethodAnalysis sma : sources){
 			sma.start();
+			sma.getMethodSummary().mergePathSummaries();
+			MergedExitState mes = sma.getMethodSummary().getMergedExitState();
+			ArrayList<SingleMethodAnalysis> callers = getCallersOf(sma.getMethod());
+			backwardToEntry(callers, mes);
+		}
+	}
+	
+	private ArrayList<SingleMethodAnalysis> getCallersOf(SootMethod sm){
+		ArrayList<SingleMethodAnalysis> smas = new ArrayList<SingleMethodAnalysis>();
+		Set<Unit> callerUnits = icfg.getCallersOf(sm);
+		for(Unit callerUnit : callerUnits){
+			SootMethod caller = icfg.getMethodOf(callerUnit);
+			ClassicCompleteBlockGraph ccbg = new ClassicCompleteBlockGraph(caller.getActiveBody());
+			Block activationBlock = null;
+			Iterator<Block> blockIter = ccbg.iterator();
+			while(blockIter.hasNext() && activationBlock == null){
+				Block b = blockIter.next();
+				Iterator<Unit> unitIter = b.iterator();
+				while(unitIter.hasNext() && activationBlock == null){
+					Unit u = unitIter.next();
+					if(u == callerUnit){
+						activationBlock = b;
+						break;
+					}
+				}
+			}
+			SingleMethodAnalysis sma = new SingleMethodAnalysis(caller, activationBlock, callerUnit, MethodAnalysisType.Caller);
+			smas.add(sma);
+		}
+		return smas;
+	}
+
+	//analyze backwards from source to entry point
+	private void backwardToEntry(ArrayList<SingleMethodAnalysis> callers, MergedExitState mes){
+		//the entry point has been analyzed
+		if(callers.size() == 0){
+			//TODO something	
+			logger.info("End!!!");
+		}else{
+			for(SingleMethodAnalysis caller : callers){
+				caller.setExitState(mes);
+				caller.start();
+				caller.getMethodSummary().mergePathSummaries();
+				MergedExitState callerMES = caller.getMethodSummary().getMergedExitState();
+				ArrayList<SingleMethodAnalysis> preCallers = getCallersOf(caller.getMethod());
+				backwardToEntry(preCallers, callerMES);
+			}
 		}
 	}
 	

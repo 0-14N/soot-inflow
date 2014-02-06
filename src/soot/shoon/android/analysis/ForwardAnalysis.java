@@ -229,6 +229,7 @@ public class ForwardAnalysis {
 								calleeMS.getMethodInitState().addArgAliasValue(i, tmpAV);
 							}
 						}
+						
 						//start the callee analysis and merge the path summaries
 						sma.start();
 						sma.getMethodSummary().mergePathSummaries();
