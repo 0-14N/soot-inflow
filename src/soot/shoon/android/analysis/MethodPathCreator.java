@@ -50,9 +50,9 @@ public class MethodPathCreator {
 	/**
 	 * a recursive call for expanding the path until we meet a end
 	 * @param source : the path before handling the "branch"
-	 * @param branch : the block being handled, maybe the "branch" is not a branch (only one succor)
+	 * @param branch : the block being handled, maybe the "branch" is not a branch (only has one succor)
 	 * @param allBlocks : it is used for querying the index of a block
-	 * @param tails : it is used for judging whether come to end
+	 * @param tails : it is used for judging whether it comes to end
 	 * @return
 	 */
 	private ArrayList<ArrayList<Integer>> forkPaths(ArrayList<Integer> source, Block branch, List<Block> allBlocks, List<Block> tails){
@@ -74,10 +74,11 @@ public class MethodPathCreator {
 				for(; i < succors.size(); i++){
 					Block succor = succors.get(i);
 					//this is a loop, the succor is already in the previous list
-					if(isInList(source, allBlocks.indexOf(succor))){
+					int loopStart = -1;
+					if((loopStart = isInList(source, allBlocks.indexOf(succor))) != -1){
 						//add the loop to the source and continue to handle other succors
-						int loopStart = source.indexOf(succor);
-						for(int j = loopStart; j < source.size(); j++){
+						int tmpSize = source.size();
+						for(int j = loopStart; j < tmpSize; j++){
 							source.add(new Integer(source.get(j).intValue()));
 						}
 						continue;
@@ -92,11 +93,11 @@ public class MethodPathCreator {
 		return results;
 	}
 	
-	private boolean isInList(ArrayList<Integer> lst, int n){
-		boolean result = false;
+	private int isInList(ArrayList<Integer> lst, int n){
+		int result = -1;
 		for(int i = 0; i < lst.size(); i++){
 			if(lst.get(i).intValue() == n){
-				result = true;
+				result = i;
 				break;
 			}
 		}

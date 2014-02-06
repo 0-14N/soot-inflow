@@ -144,10 +144,10 @@ public class AnalysisManager {
 
 	//analyze backwards from source to entry point
 	private void backwardToEntry(ArrayList<SingleMethodAnalysis> callers, MergedExitState mes){
-		//the entry point has been analyzed
-		if(callers.size() == 0){
+		//comes to the entry point
+		if(callers.size() == 1 && callers.get(0).getMethod().getName().equals("dummyMainMethod")){
 			//TODO something	
-			logger.info("End!!!");
+			logger.info("At Entry Point!!!");
 		}else{
 			for(SingleMethodAnalysis caller : callers){
 				caller.setExitState(mes);

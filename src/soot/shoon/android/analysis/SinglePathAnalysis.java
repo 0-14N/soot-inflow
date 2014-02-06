@@ -30,6 +30,9 @@ public class SinglePathAnalysis {
 		}else if(this.mat == MethodAnalysisType.Callee){
 			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
 			fa.startForward();
+		}else if(this.mat == MethodAnalysisType.Caller){
+			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
+			fa.startForward();
 		}
 	}
 
