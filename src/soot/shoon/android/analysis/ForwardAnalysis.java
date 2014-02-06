@@ -70,6 +70,12 @@ public class ForwardAnalysis {
 			stopIndex = spa.getPathSummary().indexOfUnit(currAliasValue.getSource().getActivation());
 			currIndex++;
 		}
+	
+		//avoid re-enter the callee
+		if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Caller){
+			currIndex++;
+		}
+		
 		while(currIndex < stopIndex){
 			Unit currUnit = spa.getPathSummary().getUnitAt(currIndex);
 			if(currUnit instanceof DefinitionStmt){
