@@ -13,10 +13,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import soot.SootClass;
+import soot.SootFieldRef;
 import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
@@ -24,7 +26,10 @@ import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.jimple.infoflow.taintWrappers.EasyTaintWrapper;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.shoon.android.analysis.SingleMethodAnalysis.MethodAnalysisType;
+import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.MergedExitState;
+import soot.shoon.android.analysis.entity.PathSummary;
+import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
 
@@ -136,13 +141,118 @@ public class AnalysisManager {
 			collectSinkTriggerUnis(sinkContainer, null);
 		}
 	
+		//this is the tmp path summary, which is used to store the states of all 'source' path states
+		PathSummary tmpSummary = new PathSummary(null);
+		Iterator sourcePathExitStateIter = allSourcePathExitStates.entrySet().iterator();
+		while(sourcePathExitStateIter.hasNext()){
+			Entry<Unit, Set<MergedExitState>> entry = (Entry<Unit, Set<MergedExitState>>) sourcePathExitStateIter.next();
+			Unit sourceTriggerUnit = entry.getKey();
+			Set<MergedExitState> exitStateSet = entry.getValue();
+			collectSourceExitStates(tmpSummary, sourceTriggerUnit, exitStateSet);
+		}
+			
 		//start forward 'sink' path analysis
 		for(Unit sinkTriggerUnit : sinkTriggerUnits){
 			assert(sinkTriggerUnit instanceof AssignStmt || sinkTriggerUnit instanceof InvokeStmt);
 			InvokeExpr invokeExpr = null;
 			Value thisBase = null;
+			
+			if(sinkTriggerUnit instanceof AssignStmt){
+				
+			}
+			
+		}
+	}
+	
+	private void collectSourceExitStates(PathSummary tmpSummary, Unit sourceTrigger, Set<MergedExitState> stateSet){
+		assert(sourceTrigger instanceof AssignStmt || sourceTrigger instanceof InvokeStmt);
+		//parse the source trigger
+		InvokeExpr invokeExpr = null;
+		Value thisBase = null;
+		Value retValue =  null;
+		int argsCount = 0;
+		List<Value> args = null;
+		if(sourceTrigger instanceof AssignStmt){
+			AssignStmt as = (AssignStmt) sourceTrigger;
+			retValue = as.getLeftOp();
+			invokeExpr = (InvokeExpr) as.getRightOp();
+		}else if(sourceTrigger instanceof InvokeStmt){
+			invokeExpr = ((InvokeStmt) sourceTrigger).getInvokeExpr();
+		}
+		assert(invokeExpr != null);
+		if(invokeExpr instanceof InstanceInvokeExpr){
+			thisBase = ((InstanceInvokeExpr) invokeExpr).getBase();
+		}
+		argsCount = invokeExpr.getArgCount();
+		args = invokeExpr.getArgs();
 		
-			//TODO initialize the state and start forward 'sink' analysis
+
+		for(MergedExitState mes : stateSet){
+			//get the exit state
+			TaintValue thisTV = mes.getMergedExitThisTV();
+			ArrayList<AliasValue> thisAVs = mes.getMergedExitThisAVs();
+			ArrayList<TaintValue> argsTVs = mes.getMergedExitArgTVs();
+			ArrayList<ArrayList<AliasValue>> argsAVs = mes.getMergedExitArgAVs();
+			TaintValue retTV = mes.getMergedRetTV();
+			ArrayList<AliasValue> retAVs = mes.getMergedRetAVs();
+			
+		
+			//this's taint value
+			if(thisBase != null && thisTV != null){
+				TaintValue newThisTV = new TaintValue(null, thisBase);
+				tmpSummary.addTaintValue(newThisTV);
+			}
+			//this's alias values
+			if(thisBase != null && thisAVs != null){
+				for(AliasValue thisAV : thisAVs){
+					AliasValue newThisAV = new AliasValue(null, null, thisBase);
+					ArrayList<SootFieldRef> accessPath = thisAV.getAccessPath();
+					for(SootFieldRef sfr : accessPath){
+						newThisAV.appendField(sfr);
+					}
+					tmpSummary.addAlias(newThisAV);
+				}
+			}
+			//args' taint values and alias values
+			if(argsCount > 0 && argsTVs != null){
+				for(int i = 0; i < argsCount; i++){
+					Value arg = args.get(i);
+					
+					TaintValue argTV = argsTVs.get(i);
+					if(argTV != null){
+						TaintValue newArgTV = new TaintValue(null, arg);
+						tmpSummary.addTaintValue(newArgTV);
+					}
+					
+					ArrayList<AliasValue> argAVs = argsAVs.get(i);
+					if(argAVs != null){
+						for(AliasValue argAV : argAVs){
+							AliasValue newArgAV = new AliasValue(null, null, arg);
+							ArrayList<SootFieldRef> accessPath  = argAV.getAccessPath();
+							for(SootFieldRef sfr : accessPath){
+								newArgAV.appendField(sfr);
+							}
+							tmpSummary.addAlias(newArgAV);
+						}
+					}
+				}
+			}
+			//ret's taint value
+			if(retValue != null && retTV != null){
+				TaintValue newRetTV = new TaintValue(null, retValue);
+				tmpSummary.addTaintValue(newRetTV);
+			}
+			//ret's alias values
+			if(retValue != null && retAVs != null){
+				for(AliasValue retAV : retAVs){
+					AliasValue newRetAV = new AliasValue(null, null, retValue);
+					ArrayList<SootFieldRef> accessPath = retAV.getAccessPath();
+					for(SootFieldRef sfr : accessPath){
+						newRetAV.appendField(sfr);
+					}
+					tmpSummary.addAlias(newRetAV);
+				}
+			}
 		}
 	}
 
