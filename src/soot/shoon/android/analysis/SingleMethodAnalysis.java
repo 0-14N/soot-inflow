@@ -89,6 +89,10 @@ public class SingleMethodAnalysis {
 		return this.methodSummary;
 	}
 	
+	public Unit getActivationUnit(){
+		return this.activationUnit;
+	}
+	
 	public void setExitState(MergedExitState mes){
 		assert(this.type == MethodAnalysisType.Caller);
 		this.mes = mes;
