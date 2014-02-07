@@ -153,6 +153,80 @@ public class AnalysisManager {
 			Set<MergedExitState> exitStateSet = entry.getValue();
 			collectSourceExitStates(tmpSummary, sourceTriggerUnit, exitStateSet);
 		}
+		
+		//get the invoke units except the source and sink triggers
+		assert(dummyMain != null);
+		Set<Unit> allCallSites = icfg.getCallsFromWithin(dummyMain);
+		ArrayList<Unit> normalCallSites = new ArrayList<Unit>();
+		Set<Unit> sourceTrigger = allSourcePathExitStates.keySet();
+		for(Unit callSite : allCallSites){
+			if(!sourceTrigger.contains(callSite) && !sinkTriggerUnits.contains(callSite)){
+				normalCallSites.add(callSite);
+			}
+		}
+		
+		//start forward normal calls analysis
+		for(Unit normalCall : normalCallSites){
+			InvokeExpr invokeExpr = null;
+			Value thisBase = null;
+			Value retValue = null;
+			int argsCount = 0;
+			List<Value> args = null;
+			
+			if(normalCall instanceof AssignStmt){
+				invokeExpr = (InvokeExpr) ((AssignStmt) normalCall).getRightOp();
+				retValue = ((AssignStmt) normalCall).getLeftOp();
+			}else if(normalCall instanceof InvokeStmt){
+				invokeExpr = ((InvokeStmt) normalCall).getInvokeExpr();
+			}
+			argsCount = invokeExpr.getArgCount();
+			args = invokeExpr.getArgs();
+			
+			SootMethodRef smr = invokeExpr.getMethodRef();
+			String className = smr.declaringClass().getName();
+			String methodName = smr.name();
+			SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
+			
+			if(callee != null){
+				SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
+				MethodSummary calleeMS = sma.getMethodSummary();
+				calleeMS.getMethodInitState().initArgs(argsCount);
+				
+				TaintValue tmpTV = null;
+				Set<AliasValue> tmpAVs = null;
+				//this's taint value and alias values
+				if(!callee.isStatic()){
+					thisBase = ((InstanceInvokeExpr) invokeExpr).getBase();
+					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), thisBase)) != null){
+						calleeMS.getMethodInitState().setThisTV(tmpTV);
+					}
+					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), thisBase)).size() > 0){
+						for(AliasValue av : tmpAVs){
+							calleeMS.getMethodInitState().addThisAV(av);
+						}
+					}
+				}
+				
+				//args' taint values and alias values
+				for(int i = 0; i < argsCount; i++){
+					Value arg = args.get(i);
+					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), arg)) != null){
+						calleeMS.getMethodInitState().setArgTaintValue(i, tmpTV);
+					}
+					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), arg)).size() > 0){
+						for(AliasValue av : tmpAVs){
+							calleeMS.getMethodInitState().addArgAliasValue(i, av);
+						}
+					}
+				}
+				
+				sma.start();
+				sma.getMethodSummary().mergePathSummaries();
+				MergedExitState mes = sma.getMethodSummary().getMergedExitState();
+				addExitState(tmpSummary, mes, thisBase, argsCount, args, retValue);
+			}
+		}
+		
 			
 		//start forward 'sink' path analysis
 		for(Unit sinkTriggerUnit : sinkTriggerUnits){
@@ -274,72 +348,78 @@ public class AnalysisManager {
 		
 
 		for(MergedExitState mes : stateSet){
-			//get the exit state
-			TaintValue thisTV = mes.getMergedExitThisTV();
-			ArrayList<AliasValue> thisAVs = mes.getMergedExitThisAVs();
-			ArrayList<TaintValue> argsTVs = mes.getMergedExitArgTVs();
-			ArrayList<ArrayList<AliasValue>> argsAVs = mes.getMergedExitArgAVs();
-			TaintValue retTV = mes.getMergedRetTV();
-			ArrayList<AliasValue> retAVs = mes.getMergedRetAVs();
+			addExitState(tmpSummary, mes, thisBase, argsCount, args, retValue);
+		}
+	}
+	
+	private void addExitState(PathSummary tmpSummary, MergedExitState mes, 
+			Value thisBase, int argsCount, List<Value> args, Value retValue){
+		//get the exit state
+		TaintValue thisTV = mes.getMergedExitThisTV();
+		ArrayList<AliasValue> thisAVs = mes.getMergedExitThisAVs();
+		ArrayList<TaintValue> argsTVs = mes.getMergedExitArgTVs();
+		ArrayList<ArrayList<AliasValue>> argsAVs = mes.getMergedExitArgAVs();
+		TaintValue retTV = mes.getMergedRetTV();
+		ArrayList<AliasValue> retAVs = mes.getMergedRetAVs();
 			
 		
-			//this's taint value
-			if(thisBase != null && thisTV != null){
-				TaintValue newThisTV = new TaintValue(null, thisBase);
-				tmpSummary.addTaintValue(newThisTV);
-			}
-			//this's alias values
-			if(thisBase != null && thisAVs != null){
-				for(AliasValue thisAV : thisAVs){
-					AliasValue newThisAV = new AliasValue(null, null, thisBase);
-					ArrayList<SootFieldRef> accessPath = thisAV.getAccessPath();
-					for(SootFieldRef sfr : accessPath){
-						newThisAV.appendField(sfr);
-					}
-					tmpSummary.addAlias(newThisAV);
+		//this's taint value
+		if(thisBase != null && thisTV != null){
+			TaintValue newThisTV = new TaintValue(null, thisBase);
+			tmpSummary.addTaintValue(newThisTV);
+		}
+		//this's alias values
+		if(thisBase != null && thisAVs != null){
+			for(AliasValue thisAV : thisAVs){
+				AliasValue newThisAV = new AliasValue(null, null, thisBase);
+				ArrayList<SootFieldRef> accessPath = thisAV.getAccessPath();
+				for(SootFieldRef sfr : accessPath){
+					newThisAV.appendField(sfr);
 				}
+				tmpSummary.addAlias(newThisAV);
 			}
-			//args' taint values and alias values
-			if(argsCount > 0 && argsTVs != null){
-				for(int i = 0; i < argsCount; i++){
-					Value arg = args.get(i);
+		}
+		//args' taint values and alias values
+		if(argsCount > 0 && argsTVs != null){
+			for(int i = 0; i < argsCount; i++){
+				Value arg = args.get(i);
 					
-					TaintValue argTV = argsTVs.get(i);
-					if(argTV != null){
-						TaintValue newArgTV = new TaintValue(null, arg);
-						tmpSummary.addTaintValue(newArgTV);
-					}
+				TaintValue argTV = argsTVs.get(i);
+				if(argTV != null){
+					TaintValue newArgTV = new TaintValue(null, arg);
+					tmpSummary.addTaintValue(newArgTV);
+				}
 					
-					ArrayList<AliasValue> argAVs = argsAVs.get(i);
-					if(argAVs != null){
-						for(AliasValue argAV : argAVs){
-							AliasValue newArgAV = new AliasValue(null, null, arg);
-							ArrayList<SootFieldRef> accessPath  = argAV.getAccessPath();
-							for(SootFieldRef sfr : accessPath){
-								newArgAV.appendField(sfr);
-							}
-							tmpSummary.addAlias(newArgAV);
+				ArrayList<AliasValue> argAVs = argsAVs.get(i);
+				if(argAVs != null){
+					for(AliasValue argAV : argAVs){
+						AliasValue newArgAV = new AliasValue(null, null, arg);
+						ArrayList<SootFieldRef> accessPath  = argAV.getAccessPath();
+						for(SootFieldRef sfr : accessPath){
+							newArgAV.appendField(sfr);
 						}
+						tmpSummary.addAlias(newArgAV);
 					}
-				}
-			}
-			//ret's taint value
-			if(retValue != null && retTV != null){
-				TaintValue newRetTV = new TaintValue(null, retValue);
-				tmpSummary.addTaintValue(newRetTV);
-			}
-			//ret's alias values
-			if(retValue != null && retAVs != null){
-				for(AliasValue retAV : retAVs){
-					AliasValue newRetAV = new AliasValue(null, null, retValue);
-					ArrayList<SootFieldRef> accessPath = retAV.getAccessPath();
-					for(SootFieldRef sfr : accessPath){
-						newRetAV.appendField(sfr);
-					}
-					tmpSummary.addAlias(newRetAV);
 				}
 			}
 		}
+		//ret's taint value
+		if(retValue != null && retTV != null){
+			TaintValue newRetTV = new TaintValue(null, retValue);
+			tmpSummary.addTaintValue(newRetTV);
+		}
+		//ret's alias values
+		if(retValue != null && retAVs != null){
+			for(AliasValue retAV : retAVs){
+				AliasValue newRetAV = new AliasValue(null, null, retValue);
+				ArrayList<SootFieldRef> accessPath = retAV.getAccessPath();
+				for(SootFieldRef sfr : accessPath){
+					newRetAV.appendField(sfr);
+				}
+				tmpSummary.addAlias(newRetAV);
+			}
+		}
+		
 	}
 
 	//this list is used to save the sink trigger unis in entry
@@ -357,6 +437,8 @@ public class AnalysisManager {
 			}
 		}
 	}
+	
+	
 	
 	private boolean isInMethodsAtSourcePathList(SootMethod sm){
 		boolean result = false;
@@ -396,10 +478,14 @@ public class AnalysisManager {
 
 	//this map is used to save the exit states of each 'source' path
 	HashMap<Unit, Set<MergedExitState>> allSourcePathExitStates = new HashMap<Unit, Set<MergedExitState>>();
+	SootMethod dummyMain = null;
 	//analyze backwards from source to entry point
 	private void backwardToEntry(ArrayList<SingleMethodAnalysis> callers, MergedExitState mes){
 		//comes to the entry point
 		if(callers.size() == 1 && callers.get(0).getMethod().getName().equals("dummyMainMethod")){
+			if(dummyMain == null){
+				dummyMain = callers.get(0).getMethod();
+			}
 			logger.info("Save State At Entry Point!!!");
 			//save the exit state of this 'source' path
 			Unit sourceTriggerUnit = callers.get(0).getActivationUnit();

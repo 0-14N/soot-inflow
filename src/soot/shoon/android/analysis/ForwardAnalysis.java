@@ -150,16 +150,25 @@ public class ForwardAnalysis {
 					//sink(p1.f); ————————————————  
 					if((tmpAVs = spa.getPathSummary().isAliasBase(rv, currUnit)).size() > 0){
 						Value base = null;
-						if(rv instanceof InstanceFieldRef){
-							InstanceFieldRef ifr = (InstanceFieldRef) rv;
+						SootFieldRef lvIFR = null;
+						if(lv instanceof InstanceFieldRef){
+							InstanceFieldRef ifr = (InstanceFieldRef) lv;
 							base = ifr.getBase();
+							lvIFR = ifr.getFieldRef();
 						}else{
-							base = rv;
+							base = lv;
 						}
 						for(AliasValue tmpAV : tmpAVs){
 							AliasValue av = new AliasValue(currUnit, tmpAV.getSource(), base);
+							if(lvIFR != null){
+								av.appendField(lvIFR);
+							}
+							int i = 0;
+							if(rv instanceof InstanceFieldRef){
+								i = 1;
+							}
 							ArrayList<SootFieldRef> accessPath = tmpAV.getAccessPath();
-							for(int i = 0; i < accessPath.size(); i++){
+							for(; i < accessPath.size(); i++){
 								av.appendField(accessPath.get(i));
 							}
 							spa.getPathSummary().addAlias(av);
