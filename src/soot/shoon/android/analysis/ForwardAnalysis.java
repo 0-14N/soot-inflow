@@ -137,10 +137,14 @@ public class ForwardAnalysis {
 				}else{// the right value is not tainted
 					//if the left value is already tainted
 					if((tmpTV = spa.getPathSummary().isTainted(lv, currUnit)) != null){
-						spa.getPathSummary().deleteTaint(tmpTV);
+						if(!(rv instanceof InvokeExpr)){
+							spa.getPathSummary().deleteTaint(tmpTV);
+						}
 					}else if((tmpAVs = spa.getPathSummary().isAlias(lv, currUnit)).size() > 0){//if the left value is an alias
-						for(AliasValue tmpAV : tmpAVs){
-							spa.getPathSummary().deleteAlias(tmpAV);
+						if(!(rv instanceof InvokeExpr)){
+							for(AliasValue tmpAV : tmpAVs){
+								spa.getPathSummary().deleteAlias(tmpAV);
+							}
 						}
 					}
 					//if the right value is an alias's base, produce a new alias
@@ -186,6 +190,10 @@ public class ForwardAnalysis {
 			//or InvokeStmt: virtualinvoke $r0.<com.demos.flowdroid1.MainActivity: void setContentView(int)>(2130903040);
 			InvokeExpr invokeExpr = null;
 			Value retValue = null;
+			List<Value> args = null;
+			int argsCount = 0;
+			Value base = null;
+			
 			if(currUnit instanceof AssignStmt){
 				AssignStmt as = (AssignStmt) currUnit;
 				if(!issm.isSource(as, icfg)){
@@ -203,30 +211,48 @@ public class ForwardAnalysis {
 			
 			if(invokeExpr != null && !spa.getPathSummary().invokeExparHandled(invokeExpr)){
 				spa.getPathSummary().handledInvokeExpr(invokeExpr);
+				
+				args = invokeExpr.getArgs();
+				argsCount = args.size();
+						
 				SootMethodRef smr = invokeExpr.getMethodRef();
 				String className = smr.declaringClass().getName();
 				String methodName = smr.name();
 				SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
+				
 				if(callee != null){
-					//this method is in excluedeList, skip it
 					if(AnalysisManager.v().isInExcludeList(callee.getDeclaringClass().getName(), methodName)){
+						//this method is in excluedeList, skip it
 						//TODO currently, nothing to do
-						//this method is in includeList or classList
-					}else if(AnalysisManager.v().isInIncludeSet(callee.getDeclaringClass().getName(), methodName)
-							|| AnalysisManager.v().isInClassList(callee.getDeclaringClass().getName(), methodName)){
+					}else if(AnalysisManager.v().isInIncludeSet(callee.getDeclaringClass().getName(), methodName)){
 						//if any one of the parameters is tainted, the retValue shoule be tainted
+						if(retValue != null){
+							boolean hasTaintedArg = false;
+							for(Value arg : args){
+								if(spa.getPathSummary().isTainted(arg, currUnit) != null){
+									hasTaintedArg = true;
+									TaintValue newTV = new TaintValue(currUnit, retValue);
+									spa.getPathSummary().addTaintValue(newTV);
+									break;
+								}
+							}
+							if(!hasTaintedArg && !callee.isStatic()){
+								base = ((InstanceInvokeExpr) invokeExpr).getBase();
+								if(spa.getPathSummary().isTainted(base, currUnit) != null){
+									TaintValue newTV = new TaintValue(currUnit, retValue);
+									spa.getPathSummary().addTaintValue(newTV);
+								}
+							}
+						}
+					}else if(AnalysisManager.v().isInClassList(callee.getDeclaringClass().getName(), methodName)){
 						//TODO
 					}else{
 						//start a new SingleMethodAnalysis
 						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
 						MethodSummary calleeMS = sma.getMethodSummary();
-						List<Value> args = invokeExpr.getArgs();
 						TaintValue tmpTV = null;
 						Set<AliasValue> tmpAVs = null;
-						int argsCount = args.size();
 						calleeMS.getMethodInitState().initArgs(argsCount);
-						//the object of instance method invoking
-						Value base = null;
 						//handle "this"
 						if(!callee.isStatic()){
 							base = ((InstanceInvokeExpr)invokeExpr).getBase();
@@ -333,7 +359,6 @@ public class ForwardAnalysis {
 				}
 				//********* this is a sink ********
 				if(issm.isSink((Stmt)currUnit, icfg)){
-					List<Value> args = invokeExpr.getArgs();
 					for(Value arg : args){
 						if(spa.getPathSummary().isTainted(arg, currUnit) != null){
 							logger.info("Sink has parameter(s) tainted {} {}", currUnit, arg);

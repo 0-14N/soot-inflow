@@ -317,7 +317,6 @@ public class AnalysisManager {
 			}else{
 				if(av.getAliasBase().toString().equals(value.toString())){
 					result.add(av);
-					break;
 				}
 			}
 		}
@@ -426,7 +425,9 @@ public class AnalysisManager {
 	private ArrayList<Unit> sinkTriggerUnits = new ArrayList<Unit>();
 	private void collectSinkTriggerUnis(SootMethod smOnSinkPath, Unit u){
 		if(smOnSinkPath.getName().equals("dummyMainMethod")){
-			sinkTriggerUnits.add(u);
+			if(!sinkTriggerUnits.contains(u)){
+				sinkTriggerUnits.add(u);
+			}
 		}
 		if(isInMethodsAtSourcePathList(smOnSinkPath)){
 			return;
