@@ -291,10 +291,18 @@ public class Infoflow extends AbstractInfoflow {
                 logger.info("Shimple Callgraph has {} edges", Scene.v().getCallGraph().size());
                 iCfg = icfgFactory.buildBiDirICFG();
                 
+                if(iCfg == null){
+                	logger.info("iCfg is null, exit!");
+                	return;
+                }
+                
                 //set the iCfg to AliasBackwardAnalysis
                 AnalysisManager.v().setICFG(iCfg);
                 AnalysisManager.v().setISSM(sourcesSinks);
                 AnalysisManager.v().setITPW(taintWrapper);
+                
+                int sourceCount = 0;
+                int sinkCount = 0;
                 				
 				//get the sources and sinks
                 List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());
@@ -332,20 +340,18 @@ public class Infoflow extends AbstractInfoflow {
                     				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, ccbg, b, u);
                     				//record the source
                     				AnalysisManager.v().addSource(sma);
+                    				sourceCount++;
                     			}
                     			if(sourcesSinks.isSink((Stmt) u, iCfg)){
                     				logger.info("Sink found: {}-->{}", iCfg.getMethodOf(u), u);
                     				//record the sink
                     				AnalysisManager.v().addSink(b, u);
+                    				sinkCount++;
                     			}
                 			}
                 		}
-              
                 	}
                 }
-                
-                //start alias analysis
-                AnalysisManager.v().start();
                 
                 //Save Jimple files to "JimpleFiles/"
                 //if(debug){
@@ -353,6 +359,10 @@ public class Infoflow extends AbstractInfoflow {
                 	File dir = new File("ShimpleFiles");
                 	if(!dir.exists()){
                 		dir.mkdir();
+                	}else{
+                		for(File f : dir.listFiles()){
+                			f.delete();
+                		}
                 	}
                 	for(Entry<String, String> entry : classes.entrySet()){
                 		try{
@@ -363,6 +373,14 @@ public class Infoflow extends AbstractInfoflow {
                 		}
                 	}
                 }
+                
+                if(sourceCount == 0 || sinkCount == 0){
+                	logger.info("{} sources, {} sinks! exit!", sourceCount, sinkCount);
+                }else{
+                	//start alias analysis
+                	AnalysisManager.v().start();
+                }
+                
 			}
 			
 		});
