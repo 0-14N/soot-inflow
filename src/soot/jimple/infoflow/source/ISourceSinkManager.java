@@ -33,5 +33,8 @@ public interface ISourceSinkManager {
 	 * @return true if sink method is called
 	 */
 	public abstract boolean isSink(Stmt sCallSite, InterproceduralCFG<Unit, SootMethod> cfg);
-
+	
+	public abstract boolean isMySource(Stmt sCallSite);
+	
+	public abstract boolean isMySink(Stmt sCallSite);
 }

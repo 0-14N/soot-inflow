@@ -141,4 +141,16 @@ public class DefaultSourceSinkManager extends MethodBasedSourceSinkManager {
 		this.returnTaintMethods = returnTaintMethods;
 	}
 
+	@Override
+	public boolean isMySource(Stmt sCallSite) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isMySink(Stmt sCallSite) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

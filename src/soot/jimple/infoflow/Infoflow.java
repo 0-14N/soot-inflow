@@ -335,14 +335,16 @@ public class Infoflow extends AbstractInfoflow {
                 		for(Block b : blocks){
                 			for(Iterator<Unit> it = b.iterator(); it.hasNext();){
                 				Unit u = it.next();
-                				if(sourcesSinks.isSource((Stmt) u, iCfg)){
+                				//if(sourcesSinks.isSource((Stmt) u, iCfg)){
+                				if(sourcesSinks.isMySource((Stmt) u)){
                     				logger.info("Source found: {}-->{}", iCfg.getMethodOf(u), u);
                     				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, ccbg, b, u);
                     				//record the source
                     				AnalysisManager.v().addSource(sma);
                     				sourceCount++;
                     			}
-                    			if(sourcesSinks.isSink((Stmt) u, iCfg)){
+                    			//if(sourcesSinks.isSink((Stmt) u, iCfg)){
+                				if(sourcesSinks.isMySink((Stmt) u)){
                     				logger.info("Sink found: {}-->{}", iCfg.getMethodOf(u), u);
                     				//record the sink
                     				AnalysisManager.v().addSink(b, u);

@@ -11,6 +11,7 @@
 package soot.jimple.infoflow.source;
 
 import soot.SootMethod;
+import soot.jimple.Stmt;
 
 /**
  * A {@link ISourceSinkManager} that always returns false, i.e. one for which
@@ -30,6 +31,18 @@ public class EmptySourceSinkManager extends MethodBasedSourceSinkManager {
 
 	@Override
 	public boolean isSinkMethod(SootMethod sMethod) {
+		return false;
+	}
+
+	@Override
+	public boolean isMySource(Stmt sCallSite) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean isMySink(Stmt sCallSite) {
+		// TODO Auto-generated method stub
 		return false;
 	}
 

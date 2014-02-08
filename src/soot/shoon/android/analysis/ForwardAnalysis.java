@@ -128,7 +128,8 @@ public class ForwardAnalysis {
 				//if this a source
 				Set<AliasValue> tmpAVs = null;
 				TaintValue tmpTV = null;
-				if(issm.isSource(s, icfg)){
+				//if(issm.isSource(s, icfg)){
+				if(issm.isMySource(s)){
 					foundNewTaint(currUnit, lv);
 				}else if(spa.getPathSummary().isTainted(rv, currUnit) != null){//rv is in taintsSet
 					foundNewTaint(currUnit, lv);
@@ -196,7 +197,8 @@ public class ForwardAnalysis {
 			
 			if(currUnit instanceof AssignStmt){
 				AssignStmt as = (AssignStmt) currUnit;
-				if(!issm.isSource(as, icfg)){
+				//if(!issm.isSource(as, icfg)){
+				if(!issm.isMySource(as)){
 					Value rv = as.getRightOp();
 					if(rv instanceof InvokeExpr)
 						invokeExpr = (InvokeExpr) rv;
@@ -358,7 +360,8 @@ public class ForwardAnalysis {
 					}
 				}
 				//********* this is a sink ********
-				if(issm.isSink((Stmt)currUnit, icfg)){
+				//if(issm.isSink((Stmt)currUnit, icfg)){
+				if(issm.isMySink((Stmt)currUnit)){
 					for(Value arg : args){
 						if(spa.getPathSummary().isTainted(arg, currUnit) != null){
 							logger.info("Sink has parameter(s) tainted {} {}", currUnit, arg);
