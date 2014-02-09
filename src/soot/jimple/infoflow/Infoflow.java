@@ -48,6 +48,7 @@ import soot.shoon.android.analysis.AnalysisManager;
 import soot.shoon.android.analysis.SingleMethodAnalysis;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
+import soot.toolkits.graph.ZonedBlockGraph;
 /**
  * main infoflow class which triggers the analysis and offers method to customize it.
  *
@@ -330,15 +331,17 @@ public class Infoflow extends AbstractInfoflow {
                 		//For each reachable methods, find the sources and sinks.
                 		//Divide the method to basic blocks, iterate the blocks to find the sources
                 		//and sinks
-                		ClassicCompleteBlockGraph ccbg = new ClassicCompleteBlockGraph(m.getActiveBody());
-                		List<Block> blocks = ccbg.getBlocks();
+                		//ClassicCompleteBlockGraph ccbg = new ClassicCompleteBlockGraph(m.getActiveBody());
+                		//List<Block> blocks = ccbg.getBlocks();
+                		ZonedBlockGraph zbg = new ZonedBlockGraph(m.getActiveBody());
+                		List<Block> blocks = zbg.getBlocks();
                 		for(Block b : blocks){
                 			for(Iterator<Unit> it = b.iterator(); it.hasNext();){
                 				Unit u = it.next();
                 				//if(sourcesSinks.isSource((Stmt) u, iCfg)){
                 				if(sourcesSinks.isMySource((Stmt) u)){
                     				logger.info("Source found: {}-->{}", iCfg.getMethodOf(u), u);
-                    				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, ccbg, b, u);
+                    				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, zbg, b, u);
                     				//record the source
                     				AnalysisManager.v().addSource(sma);
                     				sourceCount++;

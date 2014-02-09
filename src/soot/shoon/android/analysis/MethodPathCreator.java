@@ -5,6 +5,7 @@ import java.util.List;
 
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
+import soot.toolkits.graph.ZonedBlockGraph;
 
 public class MethodPathCreator {
 	private static MethodPathCreator instance;
@@ -23,7 +24,8 @@ public class MethodPathCreator {
 	 * @param method
 	 * @return
 	 */
-	public ArrayList<ArrayList<Block>> getPaths(ClassicCompleteBlockGraph graph){
+	//public ArrayList<ArrayList<Block>> getPaths(ClassicCompleteBlockGraph graph){
+	public ArrayList<ArrayList<Block>> getPaths(ZonedBlockGraph graph){
 		ArrayList<ArrayList<Block>> result = new ArrayList<ArrayList<Block>>();
 		List<Block> allBlocks = graph.getBlocks();
 		List<Block> heads = graph.getHeads();

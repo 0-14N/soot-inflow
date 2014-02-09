@@ -22,12 +22,14 @@ import soot.shoon.android.analysis.entity.PathSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
+import soot.toolkits.graph.ZonedBlockGraph;
 
 public class SingleMethodAnalysis {
 	Logger logger = LoggerFactory.getLogger(getClass());
 	
 	private SootMethod method;
-	private ClassicCompleteBlockGraph ccbg;
+	//private ClassicCompleteBlockGraph ccbg;
+	private ZonedBlockGraph zbg;
 	private Block activationBlock;
 	private Unit activationUnit;
 	private MethodAnalysisType type;
@@ -47,41 +49,52 @@ public class SingleMethodAnalysis {
 	public SingleMethodAnalysis(SootMethod method, MethodAnalysisType type){
 		assert(type == MethodAnalysisType.Callee);
 		this.method = method;
-		this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
-		this.activationBlock = this.ccbg.getHeads().get(0);
+		//this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
+		this.zbg = new ZonedBlockGraph(this.method.getActiveBody());
+		//this.activationBlock = this.ccbg.getHeads().get(0);
+		this.activationBlock = this.zbg.getHeads().get(0);
 		this.activationUnit = this.activationBlock.getHead();
 		this.type = type;
-		this.paths = MethodPathCreator.v().getPaths(this.ccbg);
+		//this.paths = MethodPathCreator.v().getPaths(this.ccbg);
+		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
 	}
 	
 	public SingleMethodAnalysis(SootMethod method, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
 		this.method = method;
-		this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
+		//this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
+		this.zbg = new ZonedBlockGraph(this.method.getActiveBody());
 		this.activationBlock = activationBlock;
 		this.activationUnit = activationUnit;
 		this.type = type;
-		this.paths = MethodPathCreator.v().getPaths(this.ccbg);
+		//this.paths = MethodPathCreator.v().getPaths(this.ccbg);
+		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
 	}
 	
-	public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit){
+	//public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit){
+	public SingleMethodAnalysis(SootMethod method, ZonedBlockGraph zbg, Block activationBlock, Unit activationUnit){
 		this.method = method;
-		this.ccbg = ccbg;
+		//this.ccbg = ccbg;
+		this.zbg = zbg;
 		this.activationBlock = activationBlock;
 		this.activationUnit = activationUnit;
 		this.type = MethodAnalysisType.SourceContainer;
-		this.paths = MethodPathCreator.v().getPaths(ccbg);
+		//this.paths = MethodPathCreator.v().getPaths(ccbg);
+		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
 	}
 	
-	public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
+	//public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
+	public SingleMethodAnalysis(SootMethod method, ZonedBlockGraph zbg, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
 		this.method = method;
-		this.ccbg = ccbg;
+		//this.ccbg = ccbg;
+		this.zbg = zbg;
 		this.activationBlock = activationBlock;
 		this.activationUnit = activationUnit;
 		this.type = type;
-		this.paths = MethodPathCreator.v().getPaths(ccbg);
+		//this.paths = MethodPathCreator.v().getPaths(ccbg);
+		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
 	}
 	
@@ -259,8 +272,12 @@ public class SingleMethodAnalysis {
 		}
 	}
 	
-	public ClassicCompleteBlockGraph getCCBG(){
-		return this.ccbg;
+	//public ClassicCompleteBlockGraph getCCBG(){
+	//	return this.ccbg;
+	//}
+	
+	public ZonedBlockGraph getZBG(){
+		return this.zbg;
 	}
 	
 	public SootMethod getMethod(){
