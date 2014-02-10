@@ -65,6 +65,10 @@ public class PathSummary {
 	public void addAlias(AliasValue aliasValue){
 		if(!isInAliasSet(aliasValue)){
 			this.aliasSet.add(aliasValue);
+			TaintValue source = aliasValue.getSource();
+			if(source != null){
+				source.addAlias(aliasValue);
+			}
 		}
 	}
 	
