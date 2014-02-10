@@ -23,6 +23,7 @@ import soot.jimple.InstanceFieldRef;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
+import soot.jimple.StaticFieldRef;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.jimple.infoflow.taintWrappers.EasyTaintWrapper;
@@ -255,6 +256,10 @@ public class AnalysisManager {
 				SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
 				MethodSummary calleeMS = sma.getMethodSummary();
 				calleeMS.getMethodInitState().initArgs(argsCount);
+				
+				//add static fields' tvs and avs
+				calleeMS.getMethodInitState().addAllStaticFieldTVs(tmpSummary.getStaticFieldTVs());
+				calleeMS.getMethodInitState().addAllStaticFieldAVs(tmpSummary.getStaticFieldAVs());
 		
 				TaintValue tmpTV = null;
 				Set<AliasValue> tmpAVs = null;
@@ -360,6 +365,13 @@ public class AnalysisManager {
 		ArrayList<ArrayList<AliasValue>> argsAVs = mes.getMergedExitArgAVs();
 		TaintValue retTV = mes.getMergedRetTV();
 		ArrayList<AliasValue> retAVs = mes.getMergedRetAVs();
+		//static fields' avs and tvs
+		ArrayList<StaticFieldRef> sfrTVs = mes.getStaticFieldTVs();
+		HashMap<StaticFieldRef, Set<AliasValue>> sfrAVs = mes.getStaticFieldAVs();
+		
+		//add sf's avs and tvs
+		tmpSummary.addAllStaticFieldTVs(sfrTVs);
+		tmpSummary.addAllStaticFieldAVs(sfrAVs);
 			
 		
 		//this's taint value
