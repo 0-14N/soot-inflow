@@ -304,6 +304,7 @@ public class Infoflow extends AbstractInfoflow {
                 
                 int sourceCount = 0;
                 int sinkCount = 0;
+                
                 				
 				//get the sources and sinks
                 List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());

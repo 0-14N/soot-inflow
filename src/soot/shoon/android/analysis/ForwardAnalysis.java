@@ -221,13 +221,15 @@ public class ForwardAnalysis {
 				String className = smr.declaringClass().getName();
 				String methodName = smr.name();
 				SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
-				
-				if(callee != null){
+			
+				if(callee == null){
+					//TODO it is weird that some methods are missing in Soot
+				}else{
 					if(AnalysisManager.v().isInExcludeList(callee.getDeclaringClass().getName(), methodName)){
 						//this method is in excluedeList, skip it
 						//TODO currently, nothing to do
 					}else if(AnalysisManager.v().isInIncludeSet(callee.getDeclaringClass().getName(), methodName)){
-						//if any one of the parameters is tainted, the retValue shoule be tainted
+						//if any one of the parameters is tainted, the retValue should be tainted
 						if(retValue != null){
 							boolean hasTaintedArg = false;
 							for(Value arg : args){
