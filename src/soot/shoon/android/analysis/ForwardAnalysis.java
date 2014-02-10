@@ -1,6 +1,7 @@
 package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -14,6 +15,7 @@ import soot.SootMethodRef;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.Constant;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InstanceInvokeExpr;
@@ -22,6 +24,7 @@ import soot.jimple.InvokeStmt;
 import soot.jimple.ParameterRef;
 import soot.jimple.ReturnStmt;
 import soot.jimple.ReturnVoidStmt;
+import soot.jimple.StaticFieldRef;
 import soot.jimple.Stmt;
 import soot.jimple.ThisRef;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
@@ -81,9 +84,11 @@ public class ForwardAnalysis {
 			Unit currUnit = spa.getPathSummary().getUnitAt(currIndex);
 			if(currUnit instanceof DefinitionStmt){
 				DefinitionStmt s = (DefinitionStmt) currUnit;
+				
 				Value lv = s.getLeftOp();
 				Value rv = s.getRightOp();
-			
+				
+				//[start] callee-initialization
 				//initialize the taints and aliases
 				if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Callee){
 					TaintValue paramTV = null;
@@ -124,6 +129,8 @@ public class ForwardAnalysis {
 						}
 					}
 				}
+				//[end]
+			
 				
 				//if this a source
 				Set<AliasValue> tmpAVs = null;
@@ -131,6 +138,25 @@ public class ForwardAnalysis {
 				//if(issm.isSource(s, icfg)){
 				if(issm.isMySource(s)){
 					foundNewTaint(currUnit, lv);
+				}else if(rv instanceof StaticFieldRef){
+					//if rv is a tainted static field
+					if(spa.getPathSummary().isStaticFieldTainted((StaticFieldRef) rv) != null){
+						foundNewTaint(currUnit, lv);
+					}
+				
+					//get the avs
+					Set<AliasValue> avSet = spa.getPathSummary().getStaticFieldAVs((StaticFieldRef) rv);
+					if(avSet != null && avSet.size() > 0){
+						for(AliasValue av : avSet){
+							AliasValue newAV = new AliasValue(currUnit, null, rv);
+							ArrayList<SootFieldRef> accessPath = av.getAccessPath();
+							for(SootFieldRef sfr : accessPath){
+								newAV.appendField(sfr);
+							}
+							spa.getPathSummary().addAlias(newAV);
+						}
+					}
+					
 				}else if(spa.getPathSummary().isTainted(rv, currUnit) != null){//rv is in taintsSet
 					foundNewTaint(currUnit, lv);
 				}else if(spa.getPathSummary().isAlias(rv, currUnit).size() > 0){
@@ -138,11 +164,11 @@ public class ForwardAnalysis {
 				}else{// the right value is not tainted
 					//if the left value is already tainted
 					if((tmpTV = spa.getPathSummary().isTainted(lv, currUnit)) != null){
-						if(!(rv instanceof InvokeExpr)){
+						if(rv instanceof Constant){
 							spa.getPathSummary().deleteTaint(tmpTV);
 						}
 					}else if((tmpAVs = spa.getPathSummary().isAlias(lv, currUnit)).size() > 0){//if the left value is an alias
-						if(!(rv instanceof InvokeExpr)){
+						if(rv instanceof Constant){
 							for(AliasValue tmpAV : tmpAVs){
 								spa.getPathSummary().deleteAlias(tmpAV);
 							}
@@ -257,6 +283,11 @@ public class ForwardAnalysis {
 						TaintValue tmpTV = null;
 						Set<AliasValue> tmpAVs = null;
 						calleeMS.getMethodInitState().initArgs(argsCount);
+						
+						//transfer the static fields' taint values and alias values
+						calleeMS.getMethodInitState().addAllStaticFieldTVs(spa.getPathSummary().getStaticFieldTVs());
+						calleeMS.getMethodInitState().addAllStaticFieldAVs(spa.getPathSummary().getStaticFieldAVs());
+						
 						//handle "this"
 						if(!callee.isStatic()){
 							base = ((InstanceInvokeExpr)invokeExpr).getBase();
@@ -290,12 +321,19 @@ public class ForwardAnalysis {
 						
 						//next, we should merge callee's exit state with caller's current path state
 						MergedExitState calleeMES = sma.getMethodSummary().getMergedExitState();
+						ArrayList<StaticFieldRef> sfrTVs = calleeMES.getStaticFieldTVs();
+						HashMap<StaticFieldRef, Set<AliasValue>> sfrAVs = calleeMES.getStaticFieldAVs();
 						TaintValue exitThisTV = calleeMES.getMergedExitThisTV();
 						ArrayList<AliasValue> exitThisAVs = calleeMES.getMergedExitThisAVs();
 						ArrayList<TaintValue> exitArgTVs = calleeMES.getMergedExitArgTVs();
 						ArrayList<ArrayList<AliasValue>> exitArgAVs = calleeMES.getMergedExitArgAVs();
 						TaintValue exitRetTV = calleeMES.getMergedRetTV();
 						ArrayList<AliasValue> exitRetAVs = calleeMES.getMergedRetAVs();
+						
+						//add the static fields' taint values and alias values to this path summary
+						spa.getPathSummary().addAllStaticFieldTVs(sfrTVs);
+						spa.getPathSummary().addAllStaticFieldAVs(sfrAVs);
+						
 						//this's return taint value
 						if(base != null && exitThisTV != null){
 							//this is not tainted before invoking, taints it

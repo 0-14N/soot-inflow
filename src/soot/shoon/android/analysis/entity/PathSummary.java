@@ -1,9 +1,11 @@
 package soot.shoon.android.analysis.entity;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import soot.Unit;
@@ -18,6 +20,8 @@ public class PathSummary {
 	private ArrayList<InvokeExpr> invokeExprs;
 	private Set<TaintValue> taintsSet;
 	private Set<AliasValue> aliasSet;
+	private ArrayList<StaticFieldRef> staticFieldTVs;
+	private HashMap<StaticFieldRef, Set<AliasValue>> staticFieldAVs;
 	//initial MethodSummary
 	private MethodSummary initMethodSummary;
 	
@@ -30,6 +34,8 @@ public class PathSummary {
 		this.allUnits = allUnits;
 		this.initMethodSummary = null;
 		this.spes = new SinglePathExitState(this);
+		this.staticFieldTVs = new ArrayList<StaticFieldRef>();
+		this.staticFieldAVs = new HashMap<StaticFieldRef, Set<AliasValue>>();
 	}
 	
 	public void setInitMethodSummary(MethodSummary ms){
@@ -194,6 +200,32 @@ public class PathSummary {
 		}
 		return result;
 	}
+	
+	public StaticFieldRef isStaticFieldTainted(StaticFieldRef sfr){
+		StaticFieldRef result = null;
+		for(StaticFieldRef item : this.staticFieldTVs){
+			if(item.toString().equals(sfr.toString())){
+				result = item;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	public Set<AliasValue> getStaticFieldAVs(StaticFieldRef sfr){
+		Set<AliasValue> result = null;
+		Iterator iter = this.staticFieldAVs.entrySet().iterator();
+		while(iter.hasNext()){
+			Entry<StaticFieldRef, Set<AliasValue>> entry = (Entry<StaticFieldRef, Set<AliasValue>>) iter.next();
+			StaticFieldRef key = entry.getKey();
+			Set<AliasValue> avSet = entry.getValue();
+			if(key.toString().equals(sfr.toString())){
+				result = avSet;
+				break;
+			}
+		}
+		return result;
+	}
 
 	/**
 	 * 
@@ -288,6 +320,54 @@ public class PathSummary {
 			}
 		}
 		return result;
+	}
+	
+	public void addAllStaticFieldTVs(ArrayList<StaticFieldRef> sfrs){
+		for(StaticFieldRef sfr : sfrs){
+			if(!this.staticFieldTVs.contains(sfr)){
+				this.staticFieldTVs.add(sfr);
+			}
+		}
+	}
+	
+	public void addAllStaticFieldAVs(HashMap<StaticFieldRef, Set<AliasValue>> sfAVMap){
+		Iterator iter = sfAVMap.entrySet().iterator();
+		while(iter.hasNext()){
+			Entry<StaticFieldRef, Set<AliasValue>> entry = (Entry<StaticFieldRef, Set<AliasValue>>) iter.next();
+			StaticFieldRef sfr = entry.getKey();
+			Set<AliasValue> avs = entry.getValue();
+			for(AliasValue av : avs){
+				addStaticFieldAV(sfr, av);
+			}
+		}
+	}
+	
+	public ArrayList<StaticFieldRef> getStaticFieldTVs() {
+		return staticFieldTVs;
+	}
+
+	public HashMap<StaticFieldRef, Set<AliasValue>> getStaticFieldAVs() {
+		return staticFieldAVs;
+	}
+
+	private void addStaticFieldAV(StaticFieldRef sfr, AliasValue av){
+		Set<AliasValue> avSet = this.staticFieldAVs.get(sfr);
+		if(avSet == null){
+			avSet = new HashSet<AliasValue>();
+			avSet.add(av);
+			this.staticFieldAVs.put(sfr, avSet);
+		}else{
+			boolean isExisted = false;
+			for(AliasValue item : avSet){
+				if(item.myEquals(av)){
+					isExisted = true;
+					break;
+				}
+			}
+			if(!isExisted){
+				avSet.add(av);
+			}
+		}
 	}
 	
 }

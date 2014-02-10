@@ -1,8 +1,10 @@
 package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +17,7 @@ import soot.jimple.AssignStmt;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
+import soot.jimple.StaticFieldRef;
 import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.MergedExitState;
 import soot.shoon.android.analysis.entity.MethodSummary;
@@ -167,8 +170,12 @@ public class SingleMethodAnalysis {
 			methodSummary.addPathSummary(path, pSummary);
 		}else if(this.type == MethodAnalysisType.Callee){
 			PathSummary pSummary =  new PathSummary(allUnits);
-			//TODO pSummay need to be initialized
 			pSummary.setInitMethodSummary(methodSummary);
+			
+			//add the static field's taint and alias values to pSummary
+			pSummary.addAllStaticFieldTVs(methodSummary.getMethodInitState().getStaticFieldTVs());
+			pSummary.addAllStaticFieldAVs(methodSummary.getMethodInitState().getStaticFieldAVs());
+			
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
 			spa.start();
 			methodSummary.addPathSummary(path, pSummary);
@@ -206,6 +213,13 @@ public class SingleMethodAnalysis {
 			ArrayList<ArrayList<AliasValue>> exitArgAVs = mes.getMergedExitArgAVs();
 			TaintValue exitRetTV = mes.getMergedRetTV();
 			ArrayList<AliasValue> exitRetAVs = mes.getMergedRetAVs();
+			//static fields' avs and tvs
+			ArrayList<StaticFieldRef> sfrTVs = mes.getStaticFieldTVs();
+			HashMap<StaticFieldRef, Set<AliasValue>> sfrAVs = mes.getStaticFieldAVs();
+			
+			//add static fields' avs and tvs
+			pSummary.addAllStaticFieldTVs(sfrTVs);
+			pSummary.addAllStaticFieldAVs(sfrAVs);
 			
 			//initialize the callee's exit state to this caller's current path state
 			//this's taint value

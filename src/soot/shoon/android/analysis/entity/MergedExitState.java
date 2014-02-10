@@ -1,7 +1,12 @@
 package soot.shoon.android.analysis.entity;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import soot.jimple.StaticFieldRef;
 
@@ -10,14 +15,16 @@ public class MergedExitState {
 	private ArrayList<AliasValue> mergedExitThisAVs;
 	private ArrayList<TaintValue> mergedExitArgTVs;
 	private ArrayList<ArrayList<AliasValue>> mergedExitArgAVs;
-	private List<StaticFieldRef> staticFields;
+	private ArrayList<StaticFieldRef> staticFieldTVs;
+	private HashMap<StaticFieldRef, Set<AliasValue>> staticFieldAVs;
 	private TaintValue mergedRetTV;
 	private ArrayList<AliasValue> mergedRetAVs;
 	
 	public MergedExitState(){
 		this.mergedExitArgTVs = null;
 		this.mergedExitThisAVs = new ArrayList<AliasValue>();
-		this.staticFields = new ArrayList<StaticFieldRef>();
+		this.staticFieldTVs = new ArrayList<StaticFieldRef>();
+		this.staticFieldAVs = new HashMap<StaticFieldRef, Set<AliasValue>>();
 		this.mergedRetTV = null;
 		this.mergedRetAVs = new ArrayList<AliasValue>();
 	}
@@ -48,11 +55,59 @@ public class MergedExitState {
 
 
 
-	public List<StaticFieldRef> getStaticFields() {
-		return staticFields;
+	public ArrayList<StaticFieldRef> getStaticFieldTVs() {
+		return staticFieldTVs;
+	}
+	
+	public void addStaticFieldTV(StaticFieldRef sfr){
+		if(!this.staticFieldTVs.contains(sfr)){
+			this.staticFieldTVs.add(sfr);
+		}
 	}
 
+	public void addStaticFieldAV(StaticFieldRef sfr, AliasValue av){
+		Set<AliasValue> avSet = this.staticFieldAVs.get(sfr);
+		if(avSet == null){
+			avSet = new HashSet<AliasValue>();
+			avSet.add(av);
+			this.staticFieldAVs.put(sfr, avSet);
+		}else{
+			boolean isExisted = false;
+			for(AliasValue item : avSet){
+				if(item.myEquals(av)){
+					isExisted = true;
+					break;
+				}
+			}
+			if(!isExisted){
+				avSet.add(av);
+			}
+		}
+	}
+	
+	public void addAllStaticFieldTVs(ArrayList<StaticFieldRef> sfrs){
+		for(StaticFieldRef sfr : sfrs){
+			if(!this.staticFieldTVs.contains(sfr)){
+				this.staticFieldTVs.add(sfr);
+			}
+		}
+	}
+	
+	public void addAllStaticFieldAVs(HashMap<StaticFieldRef, Set<AliasValue>> sfAVMap){
+		Iterator iter = sfAVMap.entrySet().iterator();
+		while(iter.hasNext()){
+			Entry<StaticFieldRef, Set<AliasValue>> entry = (Entry<StaticFieldRef, Set<AliasValue>>) iter.next();
+			StaticFieldRef sfr = entry.getKey();
+			Set<AliasValue> avs = entry.getValue();
+			for(AliasValue av : avs){
+				addStaticFieldAV(sfr, av);
+			}
+		}
+	}
 
+	public HashMap<StaticFieldRef, Set<AliasValue>> getStaticFieldAVs() {
+		return staticFieldAVs;
+	}
 
 	public TaintValue getMergedRetTV() {
 		return mergedRetTV;

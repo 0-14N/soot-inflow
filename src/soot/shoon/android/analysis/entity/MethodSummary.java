@@ -55,58 +55,83 @@ public class MethodSummary {
 			Set<AliasValue> avSet = ps.getAliasValues();
 			TaintValue retTV = ps.getSinglePathExitState().getRetTV();
 			ArrayList<AliasValue> retAVs = ps.getSinglePathExitState().getRetAVs();
+			//static fields' tvs and avs
+			ArrayList<StaticFieldRef> sfrTVs = ps.getStaticFieldTVs();
+			HashMap<StaticFieldRef, Set<AliasValue>> sfrAVs = ps.getStaticFieldAVs();
+			
+			//add the static fields' taint values and alias values
+			this.mes.addAllStaticFieldTVs(sfrTVs);
+			this.mes.addAllStaticFieldAVs(sfrAVs);
 		
 			//taint values
 			Iterator<TaintValue> tvIter = tvSet.iterator();
 			while(tvIter.hasNext()){
 				TaintValue tv = tvIter.next();
 				Value v = tv.getTaintValue();
+			
+				//new produced static field ref
+				if(v instanceof StaticFieldRef){
+					StaticFieldRef sfr = (StaticFieldRef) v;
+					this.mes.addStaticFieldTV(sfr);
+				}
 				
-				//if this is an instance method, handle 'this' first
-				if(!sma.getMethod().isStatic()){
-					//rn.t, then produce an alias, base:rn, fieldref:t
-					if(v instanceof InstanceFieldRef){
-						InstanceFieldRef ifr = (InstanceFieldRef) v;
-						Value base = ifr.getBase();
-						SootFieldRef sfr = ifr.getFieldRef();
-						//this
-						if(base.toString().equals("$r0")){
-							AliasValue newAV = new AliasValue(null, null, base);
-							newAV.appendField(sfr);
+				//rn.t, then produce an alias, base:rn, fieldref:t
+				if(v instanceof InstanceFieldRef){
+					InstanceFieldRef ifr = (InstanceFieldRef) v;
+					Value base = ifr.getBase();
+					SootFieldRef sfr = ifr.getFieldRef();
+					//this
+					if(base.toString().equals("$r0")){
+						AliasValue newAV = new AliasValue(null, null, base);
+						newAV.appendField(sfr);
+						//'this'
+						if(!this.sma.getMethod().isStatic()){
 							this.mes.addExitThisAV(newAV);
 						}else{
-							try{
-								int regIndex = Integer.parseInt(base.toString().substring(2));
-								if(regIndex > 0 && regIndex <= argsCount){
-									AliasValue newAV = new AliasValue(null, null, base);
-									newAV.appendField(sfr);
-									this.mes.addExitArgAV(regIndex - 1, newAV);
-								}
-							}catch(NumberFormatException nfe){
-								continue;
-							}
+							this.mes.addExitArgAV(0, newAV);
 						}
-					}else{//rn
-						//this
-						if(v.toString().equals("$r0")){
-							TaintValue newTV = new TaintValue(null, v);
-							this.mes.setExitThisTV(newTV);
-						}else{
-							try{
-								int regIndex = Integer.parseInt(v.toString().substring(2));
-								if(regIndex > 0 && regIndex <= argsCount){
-									TaintValue newTV = new TaintValue(null, v);
-									this.mes.setExitArgTV(regIndex - 1, newTV);
+					}else{
+						try{
+							int regIndex = Integer.parseInt(base.toString().substring(2));
+							if(regIndex > 0 && regIndex <= argsCount){
+								AliasValue newAV = new AliasValue(null, null, base);
+								newAV.appendField(sfr);
+								if(!this.sma.getMethod().isStatic()){
+									this.mes.addExitArgAV(regIndex - 1, newAV);
+								}else{
+									this.mes.addExitArgAV(regIndex, newAV);
 								}
-							}catch(NumberFormatException nfe){
-								continue;
 							}
+						}catch(NumberFormatException nfe){
+							continue;
 						}
 					}
-				}else{
-					//TODO
-					assert(true == false);
+				}else{//rn
+					//this
+					if(v.toString().equals("$r0")){
+						TaintValue newTV = new TaintValue(null, v);
+						if(!this.sma.getMethod().isStatic()){
+							this.mes.setExitThisTV(newTV);
+						}else{
+							this.mes.setExitArgTV(0, newTV);
+						}
+					}else{
+						try{
+							int regIndex = Integer.parseInt(v.toString().substring(2));
+							if(regIndex > 0 && regIndex <= argsCount){
+								TaintValue newTV = new TaintValue(null, v);
+								if(!this.sma.getMethod().isStatic()){
+									this.mes.setExitArgTV(regIndex - 1, newTV);
+								}else{
+									this.mes.setExitArgTV(regIndex, newTV);
+								}
+							}
+						}catch(NumberFormatException nfe){
+							continue;
+						}
+					}
 				}
+					
 			}
 		
 			//alias values
@@ -115,32 +140,41 @@ public class MethodSummary {
 				AliasValue av = avIter.next();
 				Value base = av.getAliasBase();
 				ArrayList<SootFieldRef> accessPath = av.getAccessPath();
+			
+				//new produced static field ref alias
+				if(base instanceof StaticFieldRef){
+					StaticFieldRef sfr = (StaticFieldRef) base;
+					this.mes.addStaticFieldAV(sfr, av);
+				}
 				
-				if(!sma.getMethod().isStatic()){
-					//this
-					if(base.toString().equals("$r0")){
-						AliasValue newAV = new AliasValue(null, null, base);
-						for(SootFieldRef sfr : accessPath){
-							newAV.appendField(sfr);
-						}
+				//this
+				if(base.toString().equals("$r0")){
+					AliasValue newAV = new AliasValue(null, null, base);
+					for(SootFieldRef sfr : accessPath){
+						newAV.appendField(sfr);
+					}
+					if(!this.sma.getMethod().isStatic()){
 						this.mes.addExitThisAV(newAV);
 					}else{
-						try{
-							int regIndex = Integer.parseInt(base.toString().substring(2));
-							if(regIndex > 0 && regIndex <= argsCount){
-								AliasValue newAV = new AliasValue(null, null, base);
-								for(SootFieldRef sfr : accessPath){
-									newAV.appendField(sfr);
-								}
-								this.mes.addExitArgAV(regIndex - 1, newAV);
-							}
-						}catch(NumberFormatException nfe){
-							continue;
-						}
+						this.mes.addExitArgAV(0, newAV);
 					}
 				}else{
-					//TODO
-					assert(true == false);
+					try{
+						int regIndex = Integer.parseInt(base.toString().substring(2));
+						if(regIndex > 0 && regIndex <= argsCount){
+							AliasValue newAV = new AliasValue(null, null, base);
+							for(SootFieldRef sfr : accessPath){
+								newAV.appendField(sfr);
+							}
+							if(!this.sma.getMethod().isStatic()){
+								this.mes.addExitArgAV(regIndex - 1, newAV);
+							}else{
+								this.mes.addExitArgAV(regIndex, newAV);
+							}
+						}
+					}catch(NumberFormatException nfe){
+						continue;
+					}
 				}
 			}
 			

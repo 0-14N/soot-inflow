@@ -7,14 +7,12 @@ import soot.jimple.StaticFieldRef;
 
 public class SinglePathExitState {
 		//exit state
-		private List<StaticFieldRef> staticFields;
 		private TaintValue retTV;
 		private ArrayList<AliasValue> retAVs;
 		
 		private PathSummary ps;
 		
 		public SinglePathExitState(PathSummary ps){
-			this.staticFields = new ArrayList<StaticFieldRef>();
 			this.retTV = null;
 			this.retAVs = new ArrayList<AliasValue>();
 			this.ps = ps;
