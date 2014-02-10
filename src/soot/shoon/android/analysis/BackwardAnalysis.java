@@ -1,8 +1,10 @@
 package soot.shoon.android.analysis;
 
+import soot.Local;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.DefinitionStmt;
+import soot.jimple.FieldRef;
 import soot.jimple.InstanceFieldRef;
 import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.TaintValue;
@@ -40,7 +42,8 @@ public class BackwardAnalysis {
 					Value rv = s.getRightOp();
 					Value base = fr.getBase();
 					//w.t = tainted
-					if(lv.toString().equals(base.toString())){//w = x
+					if(lv.toString().equals(base.toString()) &&
+							(rv instanceof FieldRef || rv instanceof Local)){//w = x
 						AliasValue av = null;
 						if(rv instanceof InstanceFieldRef){
 							InstanceFieldRef ifr = (InstanceFieldRef) rv;
@@ -54,7 +57,8 @@ public class BackwardAnalysis {
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();
-					}else if(rv.toString().equals(base.toString())){
+					}else if(rv.toString().equals(base.toString()) && 
+							(lv instanceof FieldRef || lv instanceof Local)){
 						AliasValue av = null; 
 						if(lv instanceof InstanceFieldRef){
 							InstanceFieldRef ifr = (InstanceFieldRef) lv;

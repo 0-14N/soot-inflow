@@ -32,6 +32,10 @@ public class AliasValue {
 		this.aliasBase = aliasBase;
 		this.accessPath = new ArrayList<SootFieldRef>();
 		this.activationIndex = 0;
+		
+		if(source != null){
+			source.addAlias(this);
+		}
 	}
 	
 	public void setActivationIndex(int index){
