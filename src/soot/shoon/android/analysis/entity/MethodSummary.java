@@ -99,7 +99,9 @@ public class MethodSummary {
 								if(!this.sma.getMethod().isStatic()){
 									this.mes.addExitArgAV(regIndex - 1, newAV);
 								}else{
-									this.mes.addExitArgAV(regIndex, newAV);
+									if(regIndex < argsCount){
+										this.mes.addExitArgAV(regIndex, newAV);
+									}
 								}
 							}
 						}catch(NumberFormatException nfe){
@@ -123,7 +125,9 @@ public class MethodSummary {
 								if(!this.sma.getMethod().isStatic()){
 									this.mes.setExitArgTV(regIndex - 1, newTV);
 								}else{
-									this.mes.setExitArgTV(regIndex, newTV);
+									if(regIndex < argsCount){
+										this.mes.setExitArgTV(regIndex, newTV);
+									}
 								}
 							}
 						}catch(NumberFormatException nfe){
@@ -169,7 +173,9 @@ public class MethodSummary {
 							if(!this.sma.getMethod().isStatic()){
 								this.mes.addExitArgAV(regIndex - 1, newAV);
 							}else{
-								this.mes.addExitArgAV(regIndex, newAV);
+								if(regIndex < argsCount){
+									this.mes.addExitArgAV(regIndex, newAV);
+								}
 							}
 						}
 					}catch(NumberFormatException nfe){

@@ -41,13 +41,29 @@ public class BackwardAnalysis {
 					Value base = fr.getBase();
 					//w.t = tainted
 					if(lv.toString().equals(base.toString())){//w = x
-						AliasValue av = new AliasValue(currUnit, tv, rv);
+						AliasValue av = null;
+						if(rv instanceof InstanceFieldRef){
+							InstanceFieldRef ifr = (InstanceFieldRef) rv;
+							Value aliasBase = ifr.getBase();
+							av = new AliasValue(currUnit, tv, aliasBase);
+							av.appendField(ifr.getFieldRef());
+						}else{
+							av = new AliasValue(currUnit, tv, rv);
+						}
 						av.appendField(tv.getSootFieldRef());
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
 						fa.startForward();
 					}else if(rv.toString().equals(base.toString())){
-						AliasValue av = new AliasValue(currUnit, tv, lv);
+						AliasValue av = null; 
+						if(lv instanceof InstanceFieldRef){
+							InstanceFieldRef ifr = (InstanceFieldRef) lv;
+							Value aliasBase = ifr.getBase();
+							av = new AliasValue(currUnit, tv, aliasBase);
+							av.appendField(ifr.getFieldRef());
+						}else{
+							av = new AliasValue(currUnit, tv, lv);
+						}
 						av.appendField(tv.getSootFieldRef());
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
