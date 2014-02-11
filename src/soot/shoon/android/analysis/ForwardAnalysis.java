@@ -217,44 +217,6 @@ public class ForwardAnalysis {
 						}
 						av.appendField(ifr.getFieldRef());
 						spa.getPathSummary().addAlias(av);
-					}else if((tmpAVs = spa.getPathSummary().isAliasBase(lv, currUnit)).size() > 0){
-						Value base = null;
-						SootFieldRef rvIFR = null;
-						if(rv instanceof InstanceFieldRef){
-							InstanceFieldRef ifr = (InstanceFieldRef) rv;
-							base = ifr.getBase();
-							rvIFR = ifr.getFieldRef();
-						}else{
-							base = rv;
-						}
-						for(AliasValue tmpAV : tmpAVs){
-							AliasValue av = new AliasValue(currUnit, tmpAV.getSource(), base);
-							if(rvIFR != null){
-								av.appendField(rvIFR);
-							}
-							int i = 0;
-							if(lv instanceof InstanceFieldRef){
-								i = 1;
-							}
-							ArrayList<SootFieldRef> accessPath = tmpAV.getAccessPath();
-							for(; i < accessPath.size(); i++){
-								av.appendField(accessPath.get(i));
-							}
-							spa.getPathSummary().addAlias(av);
-						}
-					}else if((tmpTV = spa.getPathSummary().isTaintBase(lv, currUnit)) != null){
-						InstanceFieldRef ifr = (InstanceFieldRef) tmpTV.getTaintValue();
-						AliasValue av = null;
-						//rv maybe an InstanceFieldRef
-						if(rv instanceof InstanceFieldRef){
-							InstanceFieldRef rifr = (InstanceFieldRef) rv;
-							av = new AliasValue(currUnit, tmpTV, rifr.getBase());
-							av.appendField(rifr.getFieldRef());
-						}else{
-							av = new AliasValue(currUnit, tmpTV, rv);
-						}
-						av.appendField(ifr.getFieldRef());
-						spa.getPathSummary().addAlias(av);
 					}
 				}
 			}
