@@ -62,20 +62,24 @@ public class PathSummary {
 		return this.spes;
 	}
 	
-	public void addAlias(AliasValue aliasValue){
+	public boolean addAlias(AliasValue aliasValue){
 		if(!isInAliasSet(aliasValue)){
 			this.aliasSet.add(aliasValue);
 			TaintValue source = aliasValue.getSource();
 			if(source != null){
 				source.addAlias(aliasValue);
 			}
+			return true;
 		}
+		return false;
 	}
 	
-	public void addTaintValue(TaintValue tv){
+	public boolean addTaintValue(TaintValue tv){
 		if(!isInTaintSet(tv)){
 			this.taintsSet.add(tv);
+			return true;
 		}
+		return false;
 	}
 	
 	public boolean invokeExparHandled(InvokeExpr ie){

@@ -2,6 +2,7 @@ package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -77,6 +78,7 @@ public class ForwardAnalysis {
 	
 		//avoid re-enter the callee
 		if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Caller){
+			//TODO 14-2-11
 			currIndex++;
 		}
 		
@@ -137,7 +139,9 @@ public class ForwardAnalysis {
 				TaintValue tmpTV = null;
 				//if(issm.isSource(s, icfg)){
 				if(issm.isMySource(s)){
-					foundNewTaint(currUnit, lv);
+					if(currAliasValue == null){
+						foundNewTaint(currUnit, lv);
+					}
 				}else if(rv instanceof StaticFieldRef){
 					//if rv is a tainted static field
 					if(spa.getPathSummary().isStaticFieldTainted((StaticFieldRef) rv) != null){
@@ -161,7 +165,8 @@ public class ForwardAnalysis {
 					foundNewTaint(currUnit, lv);
 				}else if(spa.getPathSummary().isAlias(rv, currUnit).size() > 0){
 					foundNewTaint(currUnit, lv);
-				}else{// the right value is not tainted
+				}else{
+					// the right value is not tainted
 					//if the left value is already tainted
 					if((tmpTV = spa.getPathSummary().isTainted(lv, currUnit)) != null){
 						if(rv instanceof Constant){
@@ -337,7 +342,11 @@ public class ForwardAnalysis {
 						ArrayList<ArrayList<AliasValue>> exitArgAVs = calleeMES.getMergedExitArgAVs();
 						TaintValue exitRetTV = calleeMES.getMergedRetTV();
 						ArrayList<AliasValue> exitRetAVs = calleeMES.getMergedRetAVs();
+						//the new produced tvs and avs
+						Set<TaintValue> newTVs = new HashSet<TaintValue>();
+						Set<AliasValue> newAVs = new HashSet<AliasValue>();
 						
+						//[start] collect result of callee
 						//add the static fields' taint values and alias values to this path summary
 						spa.getPathSummary().addAllStaticFieldTVs(sfrTVs);
 						spa.getPathSummary().addAllStaticFieldAVs(sfrAVs);
@@ -347,7 +356,9 @@ public class ForwardAnalysis {
 							//this is not tainted before invoking, taints it
 							if(spa.getPathSummary().isTainted(base, currUnit) == null){
 								TaintValue newExitThisTV = new TaintValue(currUnit, base);
-								spa.getPathSummary().addTaintValue(newExitThisTV);
+								if(spa.getPathSummary().addTaintValue(newExitThisTV)){
+									newTVs.add(newExitThisTV);
+								}
 							}
 						}
 						//this's return alias values
@@ -358,7 +369,9 @@ public class ForwardAnalysis {
 								for(SootFieldRef sfr : accessPath){
 									newExitThisAV.appendField(sfr);
 								}
-								spa.getPathSummary().addAlias(newExitThisAV);
+								if(spa.getPathSummary().addAlias(newExitThisAV)){
+									newAVs.add(newExitThisAV);
+								}
 							}
 						}
 						//args' return taint values & args' return alias values
@@ -370,7 +383,9 @@ public class ForwardAnalysis {
 								if(argTV != null){
 									if(spa.getPathSummary().isTainted(arg, currUnit) == null){
 										TaintValue newExitArgTV = new TaintValue(currUnit, arg);
-										spa.getPathSummary().addTaintValue(newExitArgTV);
+										if(spa.getPathSummary().addTaintValue(newExitArgTV)){
+											newTVs.add(newExitArgTV);
+										}
 									}
 								}
 								//alias values
@@ -382,7 +397,9 @@ public class ForwardAnalysis {
 										for(SootFieldRef sfr : accessPath){
 											newExitArgAV.appendField(sfr);
 										}
-										spa.getPathSummary().addAlias(newExitArgAV);
+										if(spa.getPathSummary().addAlias(newExitArgAV)){
+											newAVs.add(newExitArgAV);
+										}
 									}
 								}
 							}
@@ -391,7 +408,9 @@ public class ForwardAnalysis {
 						if(retValue != null && exitRetTV != null){
 							if(spa.getPathSummary().isTainted(retValue, currUnit) == null){
 								TaintValue newExitRetTV = new TaintValue(currUnit, retValue);
-								spa.getPathSummary().addTaintValue(newExitRetTV);
+								if(spa.getPathSummary().addTaintValue(newExitRetTV)){
+									newTVs.add(newExitRetTV);
+								}
 							}
 						}
 						//ret's return alias values
@@ -402,11 +421,32 @@ public class ForwardAnalysis {
 								for(SootFieldRef sfr : accessPath){
 									newExitRetAV.appendField(sfr);
 								}
-								spa.getPathSummary().addAlias(newExitRetAV);
+								if(spa.getPathSummary().addAlias(newExitRetAV)){
+									newAVs.add(newExitRetAV);
+								}
 							}
+						}
+						//[end]
+				
+						
+						//after collect the result, for the new produced tvs and av, should do
+						//backward analysis
+						for(TaintValue ntv : newTVs){
+							Value v = ntv.getTaintValue();
+							if(v instanceof InstanceFieldRef){
+								ntv.setHeapAssignment(true);
+								BackwardAnalysis ba = new BackwardAnalysis(currUnit, ntv, spa);
+								ba.startBackward();
+							}
+						}
+						
+						for(AliasValue nav : newAVs){
+							AVBackwardAnalysis avba = new AVBackwardAnalysis(spa, nav, currUnit);
+							avba.startAVBackward();
 						}
 					}
 				}
+				
 				//********* this is a sink ********
 				//if(issm.isSink((Stmt)currUnit, icfg)){
 				if(issm.isMySink((Stmt)currUnit)){
@@ -416,6 +456,7 @@ public class ForwardAnalysis {
 						}
 					}
 				}
+				
 			}
 			
 			//ret* instructions

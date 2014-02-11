@@ -41,9 +41,9 @@ public class BackwardAnalysis {
 					Value lv = s.getLeftOp();
 					Value rv = s.getRightOp();
 					Value base = fr.getBase();
-					//w.t = tainted
+					//w.t = tainted, w = x/w = x.a
 					if(lv.toString().equals(base.toString()) &&
-							(rv instanceof FieldRef || rv instanceof Local)){//w = x
+							(rv instanceof FieldRef || rv instanceof Local)){
 						AliasValue av = null;
 						if(rv instanceof InstanceFieldRef){
 							InstanceFieldRef ifr = (InstanceFieldRef) rv;
@@ -53,6 +53,7 @@ public class BackwardAnalysis {
 						}else{
 							av = new AliasValue(currUnit, tv, rv);
 						}
+						//av: x.t/x.a.t
 						av.appendField(tv.getSootFieldRef());
 						spa.getPathSummary().addAlias(av);
 						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);

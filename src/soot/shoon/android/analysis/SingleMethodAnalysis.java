@@ -216,7 +216,8 @@ public class SingleMethodAnalysis {
 			//static fields' avs and tvs
 			ArrayList<StaticFieldRef> sfrTVs = mes.getStaticFieldTVs();
 			HashMap<StaticFieldRef, Set<AliasValue>> sfrAVs = mes.getStaticFieldAVs();
-			
+		
+			//[start] initialize path summary
 			//add static fields' avs and tvs
 			pSummary.addAllStaticFieldTVs(sfrTVs);
 			pSummary.addAllStaticFieldAVs(sfrAVs);
@@ -278,6 +279,8 @@ public class SingleMethodAnalysis {
 					pSummary.addAlias(newExitRetAV);
 				}
 			}
+			//[end]
+			
 		
 			//start the caller's analysis
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
