@@ -134,7 +134,9 @@ public class AnalysisManager {
 			ArrayList<SingleMethodAnalysis> callers = getCallersOf(sma.getMethod());
 			backwardToEntry(callers, mes);
 		}
-	
+		
+
+		/*
 		//then, we should find the 'sink' path, also, we should exclude those paths
 		//have been analyzed because that they contain both source and sink
 		Iterator sinkIter = sinks.entrySet().iterator();
@@ -165,7 +167,6 @@ public class AnalysisManager {
 				normalCallSites.add(callSite);
 			}
 		}
-		
 		//start forward normal calls analysis
 		for(Unit normalCall : normalCallSites){
 			InvokeExpr invokeExpr = null;
@@ -292,6 +293,8 @@ public class AnalysisManager {
 				sma.start();
 			}
 		}
+	
+		*/
 	}
 	
 	private TaintValue isTainted(Set<TaintValue> taintsSet, Value value){
@@ -499,9 +502,10 @@ public class AnalysisManager {
 			if(dummyMain == null){
 				dummyMain = callers.get(0).getMethod();
 			}
-			logger.info("Save State At Entry Point!!!");
+			
 			//save the exit state of this 'source' path
 			Unit sourceTriggerUnit = callers.get(0).getActivationUnit();
+			logger.info("Arrived at dummy method -- {}", sourceTriggerUnit);
 			Set<MergedExitState> exitStateSet = allSourcePathExitStates.get(sourceTriggerUnit);
 			if(exitStateSet == null){
 				exitStateSet = new HashSet<MergedExitState>();
