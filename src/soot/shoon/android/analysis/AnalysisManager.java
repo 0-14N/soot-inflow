@@ -135,6 +135,8 @@ public class AnalysisManager {
 			backwardToEntry(callers, mes);
 		}
 		
+		//get the dummyMain method
+		assert(dummyMain != null);
 
 		/*
 		//then, we should find the 'sink' path, also, we should exclude those paths
@@ -506,6 +508,13 @@ public class AnalysisManager {
 			//save the exit state of this 'source' path
 			Unit sourceTriggerUnit = callers.get(0).getActivationUnit();
 			logger.info("Arrived at dummy method -- {}", sourceTriggerUnit);
+			
+			SingleMethodAnalysis dummyMain = callers.get(0);
+			dummyMain.setMethodAnalysisType(MethodAnalysisType.DummyMain);
+			dummyMain.setExitState(mes);
+			dummyMain.start();
+			
+			/*
 			Set<MergedExitState> exitStateSet = allSourcePathExitStates.get(sourceTriggerUnit);
 			if(exitStateSet == null){
 				exitStateSet = new HashSet<MergedExitState>();
@@ -514,6 +523,7 @@ public class AnalysisManager {
 			}else{
 				exitStateSet.add(mes);
 			}
+			*/
 		}else{
 			for(SingleMethodAnalysis caller : callers){
 				//save the methods appear on 'source' path

@@ -36,7 +36,7 @@ public class SinglePathAnalysis {
 		}else if(this.mat == MethodAnalysisType.Callee){
 			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
 			fa.startForward();
-		}else if(this.mat == MethodAnalysisType.Caller){
+		}else if(this.mat == MethodAnalysisType.Caller || this.mat == MethodAnalysisType.DummyMain){
 			//when return back from callee, if there are any alias like X.Y, should do backward analysis first
 			Set<AliasValue> aliasSet = this.pSummary.getAliasValues();
 			Set<TaintValue> taintsSet = this.pSummary.getTaintsSet();

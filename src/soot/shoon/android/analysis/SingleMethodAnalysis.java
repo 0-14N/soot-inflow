@@ -46,7 +46,8 @@ public class SingleMethodAnalysis {
 	public enum MethodAnalysisType{
 		SourceContainer,
 		Callee,
-		Caller
+		Caller,
+		DummyMain,
 	}
 
 	public SingleMethodAnalysis(SootMethod method, MethodAnalysisType type){
@@ -137,6 +138,10 @@ public class SingleMethodAnalysis {
 					analyzeSinglePath(path);
 				}
 			}
+		}else if(this.type == MethodAnalysisType.DummyMain){
+			ArrayList<Block> wholeMethod = new ArrayList<Block>();
+			wholeMethod.addAll(this.zbg.getBlocks());
+			analyzeSinglePath(wholeMethod);
 		}
 		//although the code is the same, maybe there will be something specific to be handled
 		//in different situations
@@ -179,7 +184,7 @@ public class SingleMethodAnalysis {
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
 			spa.start();
 			methodSummary.addPathSummary(path, pSummary);
-		}else if(this.type == MethodAnalysisType.Caller){
+		}else if(this.type == MethodAnalysisType.Caller || this.type == MethodAnalysisType.DummyMain){
 			assert(mes != null);
 			PathSummary pSummary = new PathSummary(allUnits);
 			
@@ -299,6 +304,10 @@ public class SingleMethodAnalysis {
 	
 	public SootMethod getMethod(){
 		return this.method;
+	}
+	
+	public void setMethodAnalysisType(MethodAnalysisType mat){
+		this.type = mat;
 	}
 	
 }
