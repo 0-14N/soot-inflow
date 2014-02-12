@@ -35,6 +35,7 @@ public class BackwardAnalysis {
 	//w.f = t
 	private TaintValue tv;
 	private InstanceFieldRef fr;//w.f
+	private ArrayList<AliasValue> newAVs;
 	
 	public BackwardAnalysis(Unit activationUnit, TaintValue tv, 
 			SinglePathAnalysis spa){
@@ -42,6 +43,7 @@ public class BackwardAnalysis {
 		this.spa = spa;
 		this.tv = tv;
 		this.issm = AnalysisManager.v().getISSM();
+		this.newAVs = new ArrayList<AliasValue>();
 	}
 	
 	
@@ -49,56 +51,64 @@ public class BackwardAnalysis {
 		int currIndex = spa.getPathSummary().indexOfUnit(activationUnit);
 		while(currIndex >= 0){
 			Unit currUnit = spa.getPathSummary().getUnitAt(currIndex);
+			
+			//if this is activation unit, init fieldref and backward
+			if(currUnit == activationUnit){
+				this.fr = (InstanceFieldRef) ((DefinitionStmt) currUnit).getLeftOp();
+				currIndex--;
+				continue;
+			}
 		
 			//[start] DefinitionStmt
 			if(currUnit instanceof DefinitionStmt){
 				DefinitionStmt s = (DefinitionStmt) currUnit;
-				//if this is activation unit, init fieldref and backward
-				if(currUnit == activationUnit){
-					this.fr = (InstanceFieldRef) s.getLeftOp();
-					currIndex--;
-					continue;
+				
+				assert(fr != null);
+				Value lv = s.getLeftOp();
+				Value rv = s.getRightOp();
+				Value base = fr.getBase();
+				//w.t = tainted, w = x; x = w; w = x.a; x.a = w;
+				//newAVs: x.t, x.a.t
+				//y = x, y = x.t; x = y; x.t = y;
+				if(lv.toString().equals(base.toString()) &&
+						(rv instanceof FieldRef || rv instanceof Local)){
+					AliasValue av = null;
+					if(rv instanceof InstanceFieldRef){
+						InstanceFieldRef ifr = (InstanceFieldRef) rv;
+						Value aliasBase = ifr.getBase();
+						av = new AliasValue(currUnit, tv, aliasBase);
+						av.appendField(ifr.getFieldRef());
+					}else{
+						av = new AliasValue(currUnit, tv, rv);
+					}
+					//av: x.t/x.a.t
+					av.appendField(tv.getSootFieldRef());
+					spa.getPathSummary().addAlias(av);
+					newAVs.add(av);
+					ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
+					fa.startForward();
+				}else if(rv.toString().equals(base.toString()) && 
+						(lv instanceof FieldRef || lv instanceof Local)){
+					AliasValue av = null; 
+					if(lv instanceof InstanceFieldRef){
+						InstanceFieldRef ifr = (InstanceFieldRef) lv;
+						Value aliasBase = ifr.getBase();
+						av = new AliasValue(currUnit, tv, aliasBase);
+						av.appendField(ifr.getFieldRef());
+					}else{
+						av = new AliasValue(currUnit, tv, lv);
+					}
+					av.appendField(tv.getSootFieldRef());
+					spa.getPathSummary().addAlias(av);
+					newAVs.add(av);
+					ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
+					fa.startForward();
 				}else{
-					assert(fr != null);
-					Value lv = s.getLeftOp();
-					Value rv = s.getRightOp();
-					Value base = fr.getBase();
-					//w.t = tainted, w = x/w = x.a
-					if(lv.toString().equals(base.toString()) &&
-							(rv instanceof FieldRef || rv instanceof Local)){
-						AliasValue av = null;
-						if(rv instanceof InstanceFieldRef){
-							InstanceFieldRef ifr = (InstanceFieldRef) rv;
-							Value aliasBase = ifr.getBase();
-							av = new AliasValue(currUnit, tv, aliasBase);
-							av.appendField(ifr.getFieldRef());
-						}else{
-							av = new AliasValue(currUnit, tv, rv);
-						}
-						//av: x.t/x.a.t
-						av.appendField(tv.getSootFieldRef());
-						spa.getPathSummary().addAlias(av);
-						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
-						fa.startForward();
-					}else if(rv.toString().equals(base.toString()) && 
-							(lv instanceof FieldRef || lv instanceof Local)){
-						AliasValue av = null; 
-						if(lv instanceof InstanceFieldRef){
-							InstanceFieldRef ifr = (InstanceFieldRef) lv;
-							Value aliasBase = ifr.getBase();
-							av = new AliasValue(currUnit, tv, aliasBase);
-							av.appendField(ifr.getFieldRef());
-						}else{
-							av = new AliasValue(currUnit, tv, lv);
-						}
-						av.appendField(tv.getSootFieldRef());
-						spa.getPathSummary().addAlias(av);
-						ForwardAnalysis fa = new ForwardAnalysis(currUnit, spa, av);
-						fa.startForward();
+					for(AliasValue newAV : newAVs){
+						//TODO it is complicated!
 					}
 				}
 			}
-			
 			//[end] DefinitionStmt
 			
 			
@@ -142,7 +152,7 @@ public class BackwardAnalysis {
 						//TODO
 					}else{
 						//start a new SingleMethodAnalysis
-						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
+						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.AliasValueCallee);
 						MethodSummary calleeMS = sma.getMethodSummary();
 						calleeMS.getMethodInitState().initArgs(argsCount);
 						

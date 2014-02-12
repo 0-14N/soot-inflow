@@ -48,6 +48,7 @@ public class SingleMethodAnalysis {
 		Callee,
 		Caller,
 		DummyMain,
+		AliasValueCallee,
 	}
 
 	public SingleMethodAnalysis(SootMethod method, MethodAnalysisType type){
@@ -124,7 +125,7 @@ public class SingleMethodAnalysis {
 					analyzeSinglePath(path);
 				}
 			}
-		}else if(this.type == MethodAnalysisType.Callee){
+		}else if(this.type == MethodAnalysisType.Callee || this.type == MethodAnalysisType.AliasValueCallee){
 			for(ArrayList<Block> path : paths){
 				//if(path.contains(activationBlock)){
 				if(pathContainsBlock(path, activationBlock)){
@@ -173,7 +174,7 @@ public class SingleMethodAnalysis {
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
 			spa.start();
 			methodSummary.addPathSummary(path, pSummary);
-		}else if(this.type == MethodAnalysisType.Callee){
+		}else if(this.type == MethodAnalysisType.Callee || this.type == MethodAnalysisType.AliasValueCallee){
 			PathSummary pSummary =  new PathSummary(allUnits);
 			pSummary.setInitMethodSummary(methodSummary);
 			

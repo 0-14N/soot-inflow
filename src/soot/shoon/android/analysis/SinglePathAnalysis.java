@@ -1,5 +1,6 @@
 package soot.shoon.android.analysis;
 
+import java.util.ArrayList;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -33,25 +34,33 @@ public class SinglePathAnalysis {
 		if(this.mat == MethodAnalysisType.SourceContainer){
 			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
 			fa.startForward();
-		}else if(this.mat == MethodAnalysisType.Callee){
+		}else if(this.mat == MethodAnalysisType.Callee || this.mat == MethodAnalysisType.AliasValueCallee){
 			ForwardAnalysis fa = new ForwardAnalysis(activationUnit, this);
 			fa.startForward();
 		}else if(this.mat == MethodAnalysisType.Caller || this.mat == MethodAnalysisType.DummyMain){
 			//when return back from callee, if there are any alias like X.Y, should do backward analysis first
 			Set<AliasValue> aliasSet = this.pSummary.getAliasValues();
 			Set<TaintValue> taintsSet = this.pSummary.getTaintsSet();
-			
+		
+			ArrayList<BackwardAnalysis> bas = new ArrayList<BackwardAnalysis>();
 			for(TaintValue tv : taintsSet){
 				Value v = tv.getTaintValue();
 				if(v instanceof InstanceFieldRef){
 					tv.setHeapAssignment(true);
 					BackwardAnalysis ba = new BackwardAnalysis(activationUnit, tv, this);
-					ba.startBackward();
+					bas.add(ba);
 				}
 			}
-			
+			for(BackwardAnalysis ba : bas){
+				ba.startBackward();
+			}
+		
+			ArrayList<AVBackwardAnalysis> avbas = new ArrayList<AVBackwardAnalysis>();
 			for(AliasValue av : aliasSet){
 				AVBackwardAnalysis avba = new AVBackwardAnalysis(this, av, activationUnit);
+				avbas.add(avba);
+			}
+			for(AVBackwardAnalysis avba : avbas){
 				avba.startAVBackward();
 			}
 			
