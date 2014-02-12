@@ -84,6 +84,7 @@ public class ForwardAnalysis {
 		
 		while(currIndex < stopIndex){
 			Unit currUnit = spa.getPathSummary().getUnitAt(currIndex);
+			
 			if(currUnit instanceof DefinitionStmt){
 				DefinitionStmt s = (DefinitionStmt) currUnit;
 				
@@ -133,7 +134,8 @@ public class ForwardAnalysis {
 				}
 				//[end]
 			
-				
+			
+				//[start] common taint propagation
 				//if this a source
 				Set<AliasValue> tmpAVs = null;
 				TaintValue tmpTV = null;
@@ -224,8 +226,10 @@ public class ForwardAnalysis {
 						spa.getPathSummary().addAlias(av);
 					}
 				}
+				//[end] common taint propagation
 			}
-			
+		
+			//[start] method invoking
 			//if this is a assignment: result = *invoke $r0.<classname: return-type method-name (List<type>) (List<parameters)
 			//or InvokeStmt: virtualinvoke $r0.<com.demos.flowdroid1.MainActivity: void setContentView(int)>(2130903040);
 			InvokeExpr invokeExpr = null;
@@ -251,6 +255,7 @@ public class ForwardAnalysis {
 			}
 			
 			if(invokeExpr != null && !spa.getPathSummary().invokeExparHandled(invokeExpr)){
+				//TODO need enhancement! it is invalid!
 				spa.getPathSummary().handledInvokeExpr(invokeExpr);
 				
 				args = invokeExpr.getArgs();
@@ -264,10 +269,10 @@ public class ForwardAnalysis {
 				if(callee == null){
 					//TODO it is weird that some methods are missing in Soot
 				}else{
-					if(AnalysisManager.v().isInExcludeList(callee.getDeclaringClass().getName(), methodName)){
+					if(AnalysisManager.v().isInExcludeList(className, methodName)){
 						//this method is in excluedeList, skip it
 						//TODO currently, nothing to do
-					}else if(AnalysisManager.v().isInIncludeSet(callee.getDeclaringClass().getName(), methodName)){
+					}else if(AnalysisManager.v().isInIncludeSet(className, methodName)){
 						//if any one of the parameters is tainted, the retValue should be tainted
 						if(retValue != null){
 							boolean hasTaintedArg = false;
@@ -287,7 +292,7 @@ public class ForwardAnalysis {
 								}
 							}
 						}
-					}else if(AnalysisManager.v().isInClassList(callee.getDeclaringClass().getName(), methodName)){
+					}else if(AnalysisManager.v().isInClassList(className, methodName)){
 						//TODO
 					}else{
 						//start a new SingleMethodAnalysis
@@ -458,6 +463,7 @@ public class ForwardAnalysis {
 				}
 				
 			}
+			//[end] method invoking
 			
 			//ret* instructions
 			if(currUnit instanceof ReturnStmt){
