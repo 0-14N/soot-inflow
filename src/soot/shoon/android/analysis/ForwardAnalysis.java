@@ -77,7 +77,8 @@ public class ForwardAnalysis {
 		}
 	
 		//avoid re-enter the callee
-		if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Caller){
+		if(this.spa.getMethodAnalysisType() == MethodAnalysisType.Caller || 
+				this.spa.getMethodAnalysisType() == MethodAnalysisType.DummyMain){
 			//TODO 14-2-11
 			currIndex++;
 		}

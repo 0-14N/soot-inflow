@@ -138,7 +138,6 @@ public class AnalysisManager {
 		//get the dummyMain method
 		assert(dummyMain != null);
 
-		/*
 		//then, we should find the 'sink' path, also, we should exclude those paths
 		//have been analyzed because that they contain both source and sink
 		Iterator sinkIter = sinks.entrySet().iterator();
@@ -148,7 +147,8 @@ public class AnalysisManager {
 			SootMethod sinkContainer = block.getBody().getMethod();
 			collectSinkTriggerUnis(sinkContainer, null);
 		}
-	
+
+		/*
 		//this is the tmp path summary, which is used to store the states of all 'source' path states
 		PathSummary tmpSummary = new PathSummary(null);
 		Iterator sourcePathExitStateIter = allSourcePathExitStates.entrySet().iterator();
