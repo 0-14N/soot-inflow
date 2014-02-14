@@ -14,9 +14,12 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.IfStmt;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
 import soot.jimple.InvokeStmt;
+import soot.jimple.ReturnStmt;
+import soot.jimple.ReturnVoidStmt;
 import soot.jimple.StaticFieldRef;
 import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.MergedExitState;
@@ -24,7 +27,6 @@ import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.PathSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
-import soot.toolkits.graph.ClassicCompleteBlockGraph;
 import soot.toolkits.graph.ZonedBlockGraph;
 
 public class SingleMethodAnalysis {
@@ -158,17 +160,171 @@ public class SingleMethodAnalysis {
 		}
 		return result;
 	}
+
+	private int getIndexOfBlockStartsUnit(Unit target, ArrayList<Block> path){
+		int i = 0;
+		for(; i < path.size(); i++){
+			Block block = path.get(i);
+			Unit head = block.getHead();
+			if(head.equals(target)){
+				break;
+			}
+		}
+		return i;
+	}
 	
-	private void analyzeSinglePath(ArrayList<Block> path){
-		ArrayList<Unit> allUnits = new ArrayList<Unit>();
-		for(Block block : path){
+	private int getIndexOfBlockContainsUnit(Unit u, ArrayList<Block> path){
+		int result = 0;
+		boolean found = false;
+		for(int i = 0; i < path.size() && !found; i++){
+			Block block = path.get(i);
+			Iterator<Unit> iter = block.iterator();
+			while(iter.hasNext() && !found){
+				if(iter.next().equals(u)){
+					result = i;
+					found = true;
+				}
+			}
+		}
+		return result;
+	}
+
+	private void getChunkOfBlock(int[] labelFlags, int blkIdx, int[] chunk){
+		int i = 0;
+		
+		if(labelFlags[blkIdx] == 1){
+			chunk[0] = blkIdx;
+			for(i = blkIdx + 1; i < labelFlags.length; i++){
+				if(labelFlags[i] == 1) break;
+			}
+			chunk[1] = i;
+		}else{
+			for(i = blkIdx; i < labelFlags.length; i++){
+				if(labelFlags[i] == 1) break;
+			}
+			chunk[1] = i;
+			for(i = blkIdx; i >= 0; i--){
+				if(labelFlags[i] == 1) break;
+			}
+			if(i == -1) i = 0;
+			chunk[0] = i;
+		}
+	}
+	
+	private void constructPath(ArrayList<Block> path, int blkIdxOfCurSrTgr,
+			int[] labelFlags, int[] sourceFlags, int[] sinkFlags, ArrayList<Unit> allUnits){
+		int[] chunk = new int[2];
+		int i = 0;
+	
+		//add the chunk contains curSrTgr first
+		getChunkOfBlock(labelFlags, blkIdxOfCurSrTgr, chunk);
+		for(i = chunk[0]; i < chunk[1]; i++){
+			Block block = path.get(i);
 			Iterator<Unit> iter = block.iterator();
 			while(iter.hasNext()){
-				allUnits.add(iter.next());
+				Unit tmpU = iter.next();
+				if(!(tmpU instanceof ReturnStmt) && 
+						!(tmpU instanceof ReturnVoidStmt)){
+					allUnits.add(tmpU);
+				}
 			}
 		}
 		
-		//TODO dummyMain resort the units
+		//add chunks neither contains source trigger nor contains sink trigger
+		for(i = 0; i < path.size(); i = chunk[1]){
+			getChunkOfBlock(labelFlags, i, chunk);
+			
+			boolean containSourceSink = false;
+			for(int k = chunk[0]; k < chunk[1]; k++){
+				if(sourceFlags[k] == 1 || sinkFlags[k] == 1){
+					containSourceSink = true;
+					break;
+				}
+			}
+			
+			if(!containSourceSink){
+				for(int j = chunk[0]; j < chunk[1]; j++){
+					Block block = path.get(j);
+					Iterator<Unit> iter = block.iterator();
+					while(iter.hasNext()){
+						Unit tmpU = iter.next();
+						if(!(tmpU instanceof ReturnStmt) && 
+								!(tmpU instanceof ReturnVoidStmt)){
+							allUnits.add(tmpU);
+						}
+					}
+				}
+			}
+		}
+		
+		//add chunks contains sink trigger
+		for(i = 0; i < sinkFlags.length; i++){
+			if(sinkFlags[i] == 1){
+				getChunkOfBlock(labelFlags, i, chunk);
+				for(int j = chunk[0]; j < chunk[1]; j++){
+					Block block = path.get(j);
+					Iterator<Unit> iter = block.iterator();
+					while(iter.hasNext()){
+						Unit tmpU = iter.next();
+						if(!(tmpU instanceof ReturnStmt) && 
+								!(tmpU instanceof ReturnVoidStmt)){
+							allUnits.add(tmpU);
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	private void analyzeSinglePath(ArrayList<Block> path){
+		ArrayList<Unit> allUnits = new ArrayList<Unit>();
+		
+		if(this.type != MethodAnalysisType.DummyMain){
+			for(Block block : path){
+				Iterator<Unit> iter = block.iterator();
+				while(iter.hasNext()){
+					allUnits.add(iter.next());
+				}
+			}
+		}else{
+			//TODO dummyMain resort the units
+			ArrayList<Unit> sourceTriggerUnits = AnalysisManager.v().getSourceTriggerUnits();
+			ArrayList<Unit> sinkTriggerUnits = AnalysisManager.v().getSinkTriggerUnits();
+		
+			//1. We should split the whole method body to chunks, the 'chunk' some(one or more) blocks of code
+			//	starts with "label n" and ends with "label n+1", [label n, label n+1). 
+			//2. Note that 'label n' is always target of certain if-stmt.
+			//3. If a block's first Unit is target of certain if-stmt, the block should be flagged with '1'
+			int[] labelFlags = new int[path.size()];
+			for(Block block : path){
+				Iterator<Unit> iter = block.iterator();
+				while(iter.hasNext()){
+					Unit u = iter.next();
+					if(u instanceof IfStmt){
+						IfStmt sf = (IfStmt) u;
+						Unit target = sf.getTarget();
+						labelFlags[getIndexOfBlockStartsUnit(target, path)] = 1;
+					}
+				}
+			}
+		
+			//if a block contains source trigger unit, flagged with '1'
+			int[] sourceFlags = new int[path.size()];
+			for(Unit sourceTgrU : sourceTriggerUnits){
+				sourceFlags[getIndexOfBlockContainsUnit(sourceTgrU, path)] = 1;
+			}
+			
+			//if a block contains sink trigger unit, flagged with '1'
+			int[] sinkFlags = new int[path.size()];
+			for(Unit sinkTgrU : sinkTriggerUnits){
+				sinkFlags[getIndexOfBlockContainsUnit(sinkTgrU, path)] = 1;
+			}
+			
+			int blkIdxOfCurSrTgr = getIndexOfBlockContainsUnit(this.activationUnit, path);
+			//construct the resorted units of 'dummyMain'
+			constructPath(path, blkIdxOfCurSrTgr, labelFlags, sourceFlags, sinkFlags, allUnits);
+		}
+		
 		
 		//if this method contains a source invoking
 		if(this.type == MethodAnalysisType.SourceContainer){

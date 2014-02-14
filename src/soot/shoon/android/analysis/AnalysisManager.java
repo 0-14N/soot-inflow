@@ -36,6 +36,7 @@ import soot.shoon.android.analysis.entity.PathSummary;
 import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
+import soot.toolkits.graph.ZonedBlockGraph;
 
 public class AnalysisManager {
 	private static AnalysisManager instance;
@@ -124,6 +125,20 @@ public class AnalysisManager {
 
 	//start analysis at methods that contain statements invoke source
 	public void start(){
+		//find the 'source' trigger units in dummyMain
+		for(SingleMethodAnalysis sma : sources){
+			collectSourceTriggerUnits(sma.getMethod(), null);
+		}
+		
+		//find the 'sink' trigger units in dummyMain
+		Iterator sinkIter = sinks.entrySet().iterator();
+		while(sinkIter.hasNext()){
+			Entry<Block, Set<Unit>> entry = (Entry<Block, Set<Unit>>) sinkIter.next();
+			Block block = entry.getKey();
+			SootMethod sinkContainer = block.getBody().getMethod();
+			collectSinkTriggerUnits(sinkContainer, null);
+		}
+		
 		//first start 'source' path backward analysis
 		for(SingleMethodAnalysis sma : sources){
 			//save the methods appear on 'source' path
@@ -135,168 +150,6 @@ public class AnalysisManager {
 			backwardToEntry(callers, mes);
 		}
 		
-		//get the dummyMain method
-		assert(dummyMain != null);
-
-		//then, we should find the 'sink' path, also, we should exclude those paths
-		//have been analyzed because that they contain both source and sink
-		Iterator sinkIter = sinks.entrySet().iterator();
-		while(sinkIter.hasNext()){
-			Entry<Block, Set<Unit>> entry = (Entry<Block, Set<Unit>>) sinkIter.next();
-			Block block = entry.getKey();
-			SootMethod sinkContainer = block.getBody().getMethod();
-			collectSinkTriggerUnis(sinkContainer, null);
-		}
-
-		/*
-		//this is the tmp path summary, which is used to store the states of all 'source' path states
-		PathSummary tmpSummary = new PathSummary(null);
-		Iterator sourcePathExitStateIter = allSourcePathExitStates.entrySet().iterator();
-		while(sourcePathExitStateIter.hasNext()){
-			Entry<Unit, Set<MergedExitState>> entry = (Entry<Unit, Set<MergedExitState>>) sourcePathExitStateIter.next();
-			Unit sourceTriggerUnit = entry.getKey();
-			Set<MergedExitState> exitStateSet = entry.getValue();
-			collectSourceExitStates(tmpSummary, sourceTriggerUnit, exitStateSet);
-		}
-		
-		//get the invoke units except the source and sink triggers
-		assert(dummyMain != null);
-		Set<Unit> allCallSites = icfg.getCallsFromWithin(dummyMain);
-		ArrayList<Unit> normalCallSites = new ArrayList<Unit>();
-		Set<Unit> sourceTrigger = allSourcePathExitStates.keySet();
-		for(Unit callSite : allCallSites){
-			if(!sourceTrigger.contains(callSite) && !sinkTriggerUnits.contains(callSite)){
-				normalCallSites.add(callSite);
-			}
-		}
-		//start forward normal calls analysis
-		for(Unit normalCall : normalCallSites){
-			InvokeExpr invokeExpr = null;
-			Value thisBase = null;
-			Value retValue = null;
-			int argsCount = 0;
-			List<Value> args = null;
-			
-			if(normalCall instanceof AssignStmt){
-				invokeExpr = (InvokeExpr) ((AssignStmt) normalCall).getRightOp();
-				retValue = ((AssignStmt) normalCall).getLeftOp();
-			}else if(normalCall instanceof InvokeStmt){
-				invokeExpr = ((InvokeStmt) normalCall).getInvokeExpr();
-			}
-			argsCount = invokeExpr.getArgCount();
-			args = invokeExpr.getArgs();
-			
-			SootMethodRef smr = invokeExpr.getMethodRef();
-			String className = smr.declaringClass().getName();
-			String methodName = smr.name();
-			SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
-			
-			if(callee != null){
-				SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
-				MethodSummary calleeMS = sma.getMethodSummary();
-				calleeMS.getMethodInitState().initArgs(argsCount);
-				
-				TaintValue tmpTV = null;
-				Set<AliasValue> tmpAVs = null;
-				//this's taint value and alias values
-				if(!callee.isStatic()){
-					thisBase = ((InstanceInvokeExpr) invokeExpr).getBase();
-					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), thisBase)) != null){
-						calleeMS.getMethodInitState().setThisTV(tmpTV);
-					}
-					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), thisBase)).size() > 0){
-						for(AliasValue av : tmpAVs){
-							calleeMS.getMethodInitState().addThisAV(av);
-						}
-					}
-				}
-				
-				//args' taint values and alias values
-				for(int i = 0; i < argsCount; i++){
-					Value arg = args.get(i);
-					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), arg)) != null){
-						calleeMS.getMethodInitState().setArgTaintValue(i, tmpTV);
-					}
-					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), arg)).size() > 0){
-						for(AliasValue av : tmpAVs){
-							calleeMS.getMethodInitState().addArgAliasValue(i, av);
-						}
-					}
-				}
-				
-				sma.start();
-				sma.getMethodSummary().mergePathSummaries();
-				MergedExitState mes = sma.getMethodSummary().getMergedExitState();
-				addExitState(tmpSummary, mes, thisBase, argsCount, args, retValue);
-			}
-		}
-		
-			
-		//start forward 'sink' path analysis
-		for(Unit sinkTriggerUnit : sinkTriggerUnits){
-			assert(sinkTriggerUnit instanceof AssignStmt || sinkTriggerUnit instanceof InvokeStmt);
-			InvokeExpr invokeExpr = null;
-			Value thisBase = null;
-			int argsCount = 0;
-			List<Value> args = null;
-			
-			if(sinkTriggerUnit instanceof AssignStmt){
-				invokeExpr = (InvokeExpr) ((AssignStmt) sinkTriggerUnit).getRightOp();
-			}else if(sinkTriggerUnit instanceof InvokeStmt){
-				invokeExpr = ((InvokeStmt) sinkTriggerUnit).getInvokeExpr();
-			}
-			assert(invokeExpr != null);
-			argsCount = invokeExpr.getArgCount();
-			args = invokeExpr.getArgs();
-		
-			//get the callee on sink path
-			SootMethodRef smr = invokeExpr.getMethodRef();
-			String className = smr.declaringClass().getName();
-			String methodName = smr.name();
-			SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
-			
-			if(callee != null){
-				SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
-				MethodSummary calleeMS = sma.getMethodSummary();
-				calleeMS.getMethodInitState().initArgs(argsCount);
-				
-				//add static fields' tvs and avs
-				calleeMS.getMethodInitState().addAllStaticFieldTVs(tmpSummary.getStaticFieldTVs());
-				calleeMS.getMethodInitState().addAllStaticFieldAVs(tmpSummary.getStaticFieldAVs());
-		
-				TaintValue tmpTV = null;
-				Set<AliasValue> tmpAVs = null;
-				//this's taint value and alias values
-				if(!callee.isStatic()){
-					thisBase = ((InstanceInvokeExpr) invokeExpr).getBase();
-					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), thisBase)) != null){
-						calleeMS.getMethodInitState().setThisTV(tmpTV);
-					}
-					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), thisBase)).size() > 0){
-						for(AliasValue av : tmpAVs){
-							calleeMS.getMethodInitState().addThisAV(av);
-						}
-					}
-				}
-				
-				//args' taint values and alias values
-				for(int i = 0; i < argsCount; i++){
-					Value arg = args.get(i);
-					if((tmpTV = isTainted(tmpSummary.getTaintsSet(), arg)) != null){
-						calleeMS.getMethodInitState().setArgTaintValue(i, tmpTV);
-					}
-					if((tmpAVs = isAliasValue(tmpSummary.getAliasValues(), arg)).size() > 0){
-						for(AliasValue av : tmpAVs){
-							calleeMS.getMethodInitState().addArgAliasValue(i, av);
-						}
-					}
-				}
-				
-				sma.start();
-			}
-		}
-	
-		*/
 	}
 	
 	private TaintValue isTainted(Set<TaintValue> taintsSet, Value value){
@@ -438,9 +291,13 @@ public class AnalysisManager {
 		
 	}
 
-	//this list is used to save the sink trigger unis in entry
 	private ArrayList<Unit> sinkTriggerUnits = new ArrayList<Unit>();
-	private void collectSinkTriggerUnis(SootMethod smOnSinkPath, Unit u){
+	/**
+	 * this list is used to save the sink trigger units in dummyMain
+	 * @param smOnSinkPath
+	 * @param u
+	 */
+	private void collectSinkTriggerUnits(SootMethod smOnSinkPath, Unit u){
 		if(smOnSinkPath.getName().equals("dummyMainMethod")){
 			if(!sinkTriggerUnits.contains(u)){
 				sinkTriggerUnits.add(u);
@@ -451,9 +308,35 @@ public class AnalysisManager {
 		}else{
 			Set<Unit> callerUnits = icfg.getCallersOf(smOnSinkPath);
 			for(Unit callUnit : callerUnits){
-				collectSinkTriggerUnis(icfg.getMethodOf(callUnit), callUnit);
+				collectSinkTriggerUnits(icfg.getMethodOf(callUnit), callUnit);
 			}
 		}
+	}
+	
+	public ArrayList<Unit> getSinkTriggerUnits(){
+		return this.sinkTriggerUnits;
+	}
+	
+	private ArrayList<Unit> sourceTriggerUnits = new ArrayList<Unit>();
+	/**
+	 * 
+	 * @param smOnSourcePath
+	 * @param u
+	 */
+	private void collectSourceTriggerUnits(SootMethod smOnSourcePath, Unit u){
+		if(smOnSourcePath.getName().equals("dummyMainMethod")){
+			if(!sourceTriggerUnits.contains(u)){
+				sourceTriggerUnits.add(u);
+			}
+		}
+		Set<Unit> callerUnits = icfg.getCallersOf(smOnSourcePath);
+		for(Unit callUnit : callerUnits){
+			collectSourceTriggerUnits(icfg.getMethodOf(callUnit), callUnit);
+		}
+	}
+	
+	public ArrayList<Unit> getSourceTriggerUnits(){
+		return this.sourceTriggerUnits;
 	}
 	
 	
@@ -474,9 +357,9 @@ public class AnalysisManager {
 		Set<Unit> callerUnits = icfg.getCallersOf(sm);
 		for(Unit callerUnit : callerUnits){
 			SootMethod caller = icfg.getMethodOf(callerUnit);
-			ClassicCompleteBlockGraph ccbg = new ClassicCompleteBlockGraph(caller.getActiveBody());
+			ZonedBlockGraph zbg = new ZonedBlockGraph(caller.getActiveBody());
 			Block activationBlock = null;
-			Iterator<Block> blockIter = ccbg.iterator();
+			Iterator<Block> blockIter = zbg.iterator();
 			while(blockIter.hasNext() && activationBlock == null){
 				Block b = blockIter.next();
 				Iterator<Unit> unitIter = b.iterator();
@@ -488,7 +371,7 @@ public class AnalysisManager {
 					}
 				}
 			}
-			SingleMethodAnalysis sma = new SingleMethodAnalysis(caller, activationBlock, callerUnit, MethodAnalysisType.Caller);
+			SingleMethodAnalysis sma = new SingleMethodAnalysis(caller, zbg, activationBlock, callerUnit, MethodAnalysisType.Caller);
 			smas.add(sma);
 		}
 		return smas;
@@ -514,16 +397,6 @@ public class AnalysisManager {
 			dummyMain.setExitState(mes);
 			dummyMain.start();
 			
-			/*
-			Set<MergedExitState> exitStateSet = allSourcePathExitStates.get(sourceTriggerUnit);
-			if(exitStateSet == null){
-				exitStateSet = new HashSet<MergedExitState>();
-				exitStateSet.add(mes);
-				allSourcePathExitStates.put(sourceTriggerUnit, exitStateSet);
-			}else{
-				exitStateSet.add(mes);
-			}
-			*/
 		}else{
 			for(SingleMethodAnalysis caller : callers){
 				//save the methods appear on 'source' path
