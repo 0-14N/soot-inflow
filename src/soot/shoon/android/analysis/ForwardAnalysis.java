@@ -72,6 +72,7 @@ public class ForwardAnalysis {
 		this.spa = spa;
 		this.issm = AnalysisManager.v().getISSM();
 		this.icfg = AnalysisManager.v().getICFG();
+		this.pta = AnalysisManager.v().getPTA();
 		this.currAliasValue = av;
 	}
 	
@@ -565,6 +566,11 @@ public class ForwardAnalysis {
 								if(spa.getPathSummary().addTaintValue(newExitRetTV)){
 									newTVs.add(newExitRetTV);
 								}
+							}
+						}else if(exitRetTV == null && retValue != null){
+							TaintValue tmpRetTV = null;
+							if((tmpRetTV = spa.getPathSummary().isTainted(retValue, currUnit)) != null){
+								spa.getPathSummary().deleteTaint(tmpRetTV);
 							}
 						}
 						//ret's return alias values

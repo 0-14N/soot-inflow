@@ -26,6 +26,7 @@
 
 <java.util.ArrayList: void <init>(java.util.Collection)>
 <java.util.LinkedList: void <init>(java.util.Collection)>
+<java.util.LinkedList: boolean add(java.lang.Object)>
 
 <java.util.Set: boolean add(java.lang.Object)>
 <java.util.Set: boolean addAll(java.util.Collection)>
