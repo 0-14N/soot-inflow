@@ -140,7 +140,7 @@ public class BackwardAnalysis {
 				SootMethodRef smr = invokeExpr.getMethodRef();
 				String className = smr.declaringClass().getName();
 				String methodName = smr.name();
-				SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
+				SootMethod callee = AnalysisManager.v().getMethod(className, methodName, smr.getSignature());
 				boolean shouldActivate = false;
 				
 				if(callee != null){
@@ -152,7 +152,7 @@ public class BackwardAnalysis {
 						//TODO
 					}else{
 						//start a new SingleMethodAnalysis
-						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.AliasValueCallee);
+						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.AliasValueCallee, this.spa.getSMA());
 						MethodSummary calleeMS = sma.getMethodSummary();
 						calleeMS.getMethodInitState().initArgs(argsCount);
 						

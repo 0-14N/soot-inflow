@@ -42,6 +42,8 @@ public class SingleMethodAnalysis {
 	
 	private MethodSummary methodSummary;
 	
+	private SingleMethodAnalysis preSMA;
+	
 	//if this is a caller, the exit state of the callee
 	private MergedExitState mes = null;
 	
@@ -53,7 +55,7 @@ public class SingleMethodAnalysis {
 		AliasValueCallee,
 	}
 
-	public SingleMethodAnalysis(SootMethod method, MethodAnalysisType type){
+	public SingleMethodAnalysis(SootMethod method, MethodAnalysisType type, SingleMethodAnalysis preSMA){
 		assert(type == MethodAnalysisType.Callee);
 		this.method = method;
 		//this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
@@ -65,9 +67,11 @@ public class SingleMethodAnalysis {
 		//this.paths = MethodPathCreator.v().getPaths(this.ccbg);
 		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
+		this.preSMA = preSMA;
 	}
 	
-	public SingleMethodAnalysis(SootMethod method, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
+	public SingleMethodAnalysis(SootMethod method, Block activationBlock, Unit activationUnit, 
+			MethodAnalysisType type, SingleMethodAnalysis preSMA){
 		this.method = method;
 		//this.ccbg = new ClassicCompleteBlockGraph(this.method.getActiveBody());
 		this.zbg = new ZonedBlockGraph(this.method.getActiveBody());
@@ -77,10 +81,12 @@ public class SingleMethodAnalysis {
 		//this.paths = MethodPathCreator.v().getPaths(this.ccbg);
 		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
+		this.preSMA = preSMA;
 	}
 	
 	//public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit){
-	public SingleMethodAnalysis(SootMethod method, ZonedBlockGraph zbg, Block activationBlock, Unit activationUnit){
+	public SingleMethodAnalysis(SootMethod method, ZonedBlockGraph zbg, Block activationBlock,
+			Unit activationUnit, SingleMethodAnalysis preSMA){
 		this.method = method;
 		//this.ccbg = ccbg;
 		this.zbg = zbg;
@@ -90,10 +96,12 @@ public class SingleMethodAnalysis {
 		//this.paths = MethodPathCreator.v().getPaths(ccbg);
 		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
+		this.preSMA = preSMA;
 	}
 	
 	//public SingleMethodAnalysis(SootMethod method, ClassicCompleteBlockGraph ccbg, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
-	public SingleMethodAnalysis(SootMethod method, ZonedBlockGraph zbg, Block activationBlock, Unit activationUnit, MethodAnalysisType type){
+	public SingleMethodAnalysis(SootMethod method, ZonedBlockGraph zbg, Block activationBlock, 
+			Unit activationUnit, MethodAnalysisType type, SingleMethodAnalysis preSMA){
 		this.method = method;
 		//this.ccbg = ccbg;
 		this.zbg = zbg;
@@ -103,6 +111,7 @@ public class SingleMethodAnalysis {
 		//this.paths = MethodPathCreator.v().getPaths(ccbg);
 		this.paths = MethodPathCreator.v().getPaths(this.zbg);
 		this.methodSummary = new MethodSummary(this);
+		this.preSMA = preSMA;
 	}
 	
 	public MethodSummary getMethodSummary(){
@@ -470,6 +479,14 @@ public class SingleMethodAnalysis {
 	
 	public void setMethodAnalysisType(MethodAnalysisType mat){
 		this.type = mat;
+	}
+	
+	public MethodAnalysisType getMethodAnalysisType(){
+		return this.type;
+	}
+	
+	public SingleMethodAnalysis getPreSMA(){
+		return this.preSMA;
 	}
 	
 }

@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import soot.Main;
 import soot.MethodOrMethodContext;
 import soot.PackManager;
+import soot.PointsToAnalysis;
 import soot.Scene;
 import soot.SceneTransformer;
 import soot.SootClass;
@@ -304,7 +305,7 @@ public class Infoflow extends AbstractInfoflow {
                 
                 int sourceCount = 0;
                 int sinkCount = 0;
-                
+               
                 				
 				//get the sources and sinks
                 List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());
@@ -342,7 +343,7 @@ public class Infoflow extends AbstractInfoflow {
                 				//if(sourcesSinks.isSource((Stmt) u, iCfg)){
                 				if(sourcesSinks.isMySource((Stmt) u)){
                     				logger.info("Source found: {}-->{}", iCfg.getMethodOf(u), u);
-                    				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, zbg, b, u);
+                    				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, zbg, b, u, null);
                     				//record the source
                     				AnalysisManager.v().addSource(sma);
                     				sourceCount++;

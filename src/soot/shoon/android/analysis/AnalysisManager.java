@@ -383,7 +383,7 @@ public class AnalysisManager {
 					}
 				}
 			}
-			SingleMethodAnalysis sma = new SingleMethodAnalysis(caller, zbg, activationBlock, callerUnit, MethodAnalysisType.Caller);
+			SingleMethodAnalysis sma = new SingleMethodAnalysis(caller, zbg, activationBlock, callerUnit, MethodAnalysisType.Caller, null);
 			smas.add(sma);
 		}
 		return smas;
@@ -485,14 +485,14 @@ public class AnalysisManager {
 		return result;
 	}
 	
-	public SootMethod getMethod(String className, String methodName){
+	public SootMethod getMethod(String className, String methodName, String signature){
 		SootMethod result = null;
 		for(Entry<SootClass, Set<SootMethod>> entry : allReachableMethods.entrySet()){
 			SootClass sc = entry.getKey();
 			if(className.equals(sc.getName())){
 				Set<SootMethod> sms = entry.getValue();
 				for(SootMethod sm : sms){
-					if(methodName.equals(sm.getName())){
+					if(methodName.equals(sm.getName()) && signature.equals(sm.getSignature())){
 						result = sm;
 						break;
 					}
@@ -510,7 +510,7 @@ public class AnalysisManager {
 			if(superClass == null)
 				return null;
 			else
-				return getMethod(superClass.getName(), methodName);
+				return getMethod(superClass.getName(), methodName, signature);
 		}
 		return result;
 	}

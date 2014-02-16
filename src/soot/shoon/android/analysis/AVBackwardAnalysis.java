@@ -155,7 +155,7 @@ public class AVBackwardAnalysis {
 				SootMethodRef smr = invokeExpr.getMethodRef();
 				String className = smr.declaringClass().getName();
 				String methodName = smr.name();
-				SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
+				SootMethod callee = AnalysisManager.v().getMethod(className, methodName, smr.getSignature());
 				boolean shouldActivate = false;
 				
 				if(callee != null){
@@ -167,7 +167,7 @@ public class AVBackwardAnalysis {
 						//TODO
 					}else{
 						//start a new SingleMethodAnalysis
-						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.AliasValueCallee);
+						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.AliasValueCallee, this.spa.getSMA());
 						MethodSummary calleeMS = sma.getMethodSummary();
 						calleeMS.getMethodInitState().initArgs(argsCount);
 						
@@ -234,12 +234,7 @@ public class AVBackwardAnalysis {
 								for(int i = 0; i < argsCount; i++){
 									Value arg = args.get(i);
 									//alias values
-									ArrayList<AliasValue> argAVs = null;
-									try{
-										argAVs = exitArgAVs.get(i);
-									}catch(IndexOutOfBoundsException iooe){
-										argAVs.size();
-									}
+									ArrayList<AliasValue> argAVs = exitArgAVs.get(i);
 									if(argAVs != null && argAVs.size() > 0){
 										for(AliasValue argAV : argAVs){
 											AliasValue newExitArgAV = new AliasValue(currUnit, this.av.getSource(), arg);

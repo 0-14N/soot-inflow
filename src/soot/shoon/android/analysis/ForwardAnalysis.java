@@ -106,11 +106,7 @@ public class ForwardAnalysis {
 					}else if(rv instanceof ParameterRef){
 						ParameterRef pr = (ParameterRef) rv;
 						int index = pr.getIndex();
-						try{
-							paramTV = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgTaintValue(index);
-						}catch(IndexOutOfBoundsException ioobe){
-							index = 1;
-						}
+						paramTV = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgTaintValue(index);
 						paramAVs = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgAliasValues(index);
 					}
 					if(paramTV != null){
@@ -233,7 +229,17 @@ public class ForwardAnalysis {
 						spa.getPathSummary().addAlias(av);
 					}
 					
-					if(this.spa.getMethodAnalysisType() == MethodAnalysisType.AliasValueCallee){
+					boolean isAliasValueCalleeInPath = false;
+					SingleMethodAnalysis tmpSMA = this.spa.getSMA();
+					while(tmpSMA != null && !isAliasValueCalleeInPath){
+						if(tmpSMA.getMethodAnalysisType() == MethodAnalysisType.AliasValueCallee){
+							isAliasValueCalleeInPath = true;
+						}
+						tmpSMA = tmpSMA.getPreSMA();
+					}
+					
+					//if(this.spa.getMethodAnalysisType() == MethodAnalysisType.AliasValueCallee){
+					if(isAliasValueCalleeInPath){
 						if((tmpAVs = spa.getPathSummary().isAliasBase(lv, currUnit)).size() > 0){
 							Value base = null;
 							SootFieldRef rvIFR = null;
@@ -313,7 +319,7 @@ public class ForwardAnalysis {
 				SootMethodRef smr = invokeExpr.getMethodRef();
 				String className = smr.declaringClass().getName();
 				String methodName = smr.name();
-				SootMethod callee = AnalysisManager.v().getMethod(className, methodName);
+				SootMethod callee = AnalysisManager.v().getMethod(className, methodName, smr.getSignature());
 			
 				if(callee == null){
 					//TODO it is weird that some methods are missing in Soot
@@ -404,7 +410,7 @@ public class ForwardAnalysis {
 						//TODO
 					}else{
 						//start a new SingleMethodAnalysis
-						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee);
+						SingleMethodAnalysis sma = new SingleMethodAnalysis(callee, MethodAnalysisType.Callee, this.spa.getSMA());
 						MethodSummary calleeMS = sma.getMethodSummary();
 						TaintValue tmpTV = null;
 						Set<AliasValue> tmpAVs = null;
