@@ -302,10 +302,10 @@ public class Infoflow extends AbstractInfoflow {
                 AnalysisManager.v().setICFG(iCfg);
                 AnalysisManager.v().setISSM(sourcesSinks);
                 AnalysisManager.v().setITPW(taintWrapper);
+                AnalysisManager.v().setPTA(Scene.v().getPointsToAnalysis());
                 
                 int sourceCount = 0;
                 int sinkCount = 0;
-               
                 				
 				//get the sources and sinks
                 List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());

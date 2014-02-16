@@ -6,10 +6,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import soot.Local;
+import soot.PointsToSet;
 import soot.SootFieldRef;
 import soot.SootMethod;
 import soot.SootMethodRef;
+import soot.Type;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
@@ -29,6 +34,7 @@ import soot.shoon.android.analysis.entity.TaintValue;
 
 public class BackwardAnalysis {
 
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	private ISourceSinkManager issm;
 	private SinglePathAnalysis spa;
 	private Unit activationUnit;
@@ -140,8 +146,33 @@ public class BackwardAnalysis {
 				SootMethodRef smr = invokeExpr.getMethodRef();
 				String className = smr.declaringClass().getName();
 				String methodName = smr.name();
-				SootMethod callee = AnalysisManager.v().getMethod(className, methodName, smr.getSignature());
+				String methodSignature = smr.getSignature();
+				SootMethod callee = AnalysisManager.v().getMethod(className, methodName, methodSignature);
 				boolean shouldActivate = false;
+				
+				PointsToSet pts = null;
+				Set<Type> types = null;
+				if(callee == null && invokeExpr instanceof InstanceInvokeExpr){
+					Value itfBase = ((InstanceInvokeExpr) invokeExpr).getBase();
+					if(itfBase instanceof Local){
+						pts = AnalysisManager.v().getPTA().reachingObjects((Local) itfBase);
+					}
+				}
+				
+				if(pts != null){
+					types = pts.possibleTypes();
+					if(types != null){
+						for(Type type : types){
+							methodSignature = methodSignature.replaceFirst(className, type.toString());
+							className = type.toString();
+							callee = AnalysisManager.v().getMethod(className, methodName, methodSignature);
+							if(callee != null){
+								logger.info("**** found point to {} : {}", className, methodName);
+								break;
+							}
+						}
+					}
+				}
 				
 				if(callee != null){
 					if(AnalysisManager.v().isInExcludeList(className, methodName)){

@@ -12,6 +12,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import soot.PointsToAnalysis;
 import soot.SootClass;
 import soot.SootFieldRef;
 import soot.SootMethod;
@@ -46,6 +47,7 @@ public class AnalysisManager {
 	private IInfoflowCFG icfg; 
 	private ISourceSinkManager issm;
 	private EasyTaintWrapper itpw;
+	private PointsToAnalysis pta;
 	private static ArrayList<SingleMethodAnalysis> sources;
 	private static HashMap<Block, Set<Unit>> sinks;
 	private static HashMap<SootClass, Set<SootMethod>> allReachableMethods;
@@ -81,6 +83,10 @@ public class AnalysisManager {
 		this.issm = issm;
 	}
 	
+	public void setPTA(PointsToAnalysis pta){
+		this.pta = pta;
+	}
+	
 	public void setITPW(ITaintPropagationWrapper itpw){
 		assert(itpw instanceof EasyTaintWrapper);
 		this.itpw = (EasyTaintWrapper) itpw;
@@ -109,6 +115,10 @@ public class AnalysisManager {
 	
 	public EasyTaintWrapper getITPW(){
 		return this.itpw;
+	}
+	
+	public PointsToAnalysis getPTA(){
+		return this.pta;
 	}
 	
 	public void addSource(SingleMethodAnalysis sma){
