@@ -317,7 +317,10 @@ public class SingleMethodAnalysis {
 			//if a block contains sink trigger unit, flagged with '1'
 			int[] sinkFlags = new int[path.size()];
 			for(Unit sinkTgrU : sinkTriggerUnits){
-				sinkFlags[getIndexOfBlockContainsUnit(sinkTgrU, path)] = 1;
+				int idx = getIndexOfBlockContainsUnit(sinkTgrU, path);
+				if(sourceFlags[idx] != 1){
+					sinkFlags[idx] = 1;
+				}
 			}
 			
 			int blkIdxOfCurSrTgr = getIndexOfBlockContainsUnit(this.activationUnit, path);

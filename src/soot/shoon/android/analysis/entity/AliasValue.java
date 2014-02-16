@@ -142,12 +142,13 @@ public class AliasValue {
 				ArrayList<SootFieldRef> fieldRefs = av.getAccessPath();
 				if(fieldRefs.size() == this.accessPath.size()){
 					int length = this.accessPath.size();
-					for(int i = 0; i < length; i++){
+					int i = 0;
+					for(; i < length; i++){
 						if(!this.accessPath.get(i).toString().equals(fieldRefs.get(i).toString())){
 							break;
 						}
 					}
-					result = true;
+					if(i == length) result = true;
 				}
 			}
 		}

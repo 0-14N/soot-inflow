@@ -10,6 +10,8 @@ import java.util.Set;
 
 import soot.Unit;
 import soot.Value;
+import soot.jimple.ArrayRef;
+import soot.jimple.CastExpr;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InvokeExpr;
@@ -77,6 +79,16 @@ public class PathSummary {
 	public boolean addTaintValue(TaintValue tv){
 		if(!isInTaintSet(tv)){
 			this.taintsSet.add(tv);
+			
+			//[start] array additional
+			Value v = tv.getTaintValue();
+			if(v instanceof ArrayRef){
+				Value arrayBase = ((ArrayRef) v).getBase();
+				TaintValue arrayTV = new TaintValue(tv.getActivation(), arrayBase);
+				addTaintValue(arrayTV);
+			}
+			//[end]
+			
 			return true;
 		}
 		return false;
@@ -198,10 +210,20 @@ public class PathSummary {
 	 */
 	public TaintValue isTainted(Value value, Unit currUnit){
 		TaintValue result = null;
+		Value handledValue = null;
+		//[start] array additional, CastExpt
+		if(value instanceof ArrayRef){
+			handledValue = ((ArrayRef) value).getBase();
+		}else if(value instanceof CastExpr){
+			handledValue = ((CastExpr) value).getOp();
+		}else{
+			handledValue = value;
+		}
+		//[end]
 		for(TaintValue tv : taintsSet){
 			Unit activation = tv.getActivation();
 			Value tmp = tv.getTaintValue();
-			if(tmp.toString().equals(value.toString()) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
+			if(tmp.toString().equals(handledValue.toString()) && allUnits.indexOf(activation) < allUnits.indexOf(currUnit)){
 				result = tv;
 				break;
 			}

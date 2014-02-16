@@ -87,8 +87,11 @@ public class MethodSummary {
 						//'this'
 						if(!this.sma.getMethod().isStatic()){
 							this.mes.addExitThisAV(newAV);
-						}else{
-							this.mes.addExitArgAV(0, newAV);
+						}else if(argsCount > 0){
+							String argType = this.sma.getMethod().getParameterType(0).toString();
+							if(base.getType().toString().equals(argType)){
+								this.mes.addExitArgAV(0, newAV);
+							}
 						}
 					}else{
 						try{
@@ -97,10 +100,17 @@ public class MethodSummary {
 								AliasValue newAV = new AliasValue(null, null, base);
 								newAV.appendField(sfr);
 								if(!this.sma.getMethod().isStatic()){
-									this.mes.addExitArgAV(regIndex - 1, newAV);
+									int argIndex = regIndex - 1;
+									String argType = this.sma.getMethod().getParameterType(argIndex).toString();
+									if(base.getType().toString().equals(argType)){
+										this.mes.addExitArgAV(argIndex, newAV);
+									}
 								}else{
 									if(regIndex < argsCount){
-										this.mes.addExitArgAV(regIndex, newAV);
+										String argType = this.sma.getMethod().getParameterType(regIndex).toString();
+										if(base.getType().toString().equals(argType)){
+											this.mes.addExitArgAV(regIndex, newAV);
+										}
 									}
 								}
 							}
@@ -115,7 +125,10 @@ public class MethodSummary {
 						if(!this.sma.getMethod().isStatic()){
 							this.mes.setExitThisTV(newTV);
 						}else{
-							this.mes.setExitArgTV(0, newTV);
+							String argType = this.sma.getMethod().getParameterType(0).toString();
+							if(v.getType().toString().equals(argType)){
+								this.mes.setExitArgTV(0, newTV);
+							}
 						}
 					}else{
 						try{
@@ -123,10 +136,17 @@ public class MethodSummary {
 							if(regIndex > 0 && regIndex <= argsCount){
 								TaintValue newTV = new TaintValue(null, v);
 								if(!this.sma.getMethod().isStatic()){
-									this.mes.setExitArgTV(regIndex - 1, newTV);
+									int argIndex = regIndex - 1;
+									String argType = this.sma.getMethod().getParameterType(argIndex).toString();
+									if(v.getType().toString().equals(argType)){
+										this.mes.setExitArgTV(argIndex, newTV);
+									}
 								}else{
 									if(regIndex < argsCount){
-										this.mes.setExitArgTV(regIndex, newTV);
+										String argType = this.sma.getMethod().getParameterType(regIndex).toString();
+										if(v.getType().toString().equals(argType)){
+											this.mes.setExitArgTV(regIndex, newTV);
+										}
 									}
 								}
 							}
@@ -160,7 +180,10 @@ public class MethodSummary {
 					if(!this.sma.getMethod().isStatic()){
 						this.mes.addExitThisAV(newAV);
 					}else{
-						this.mes.addExitArgAV(0, newAV);
+						String argType = this.sma.getMethod().getParameterType(0).toString();
+						if(base.getType().toString().equals(argType)){
+							this.mes.addExitArgAV(0, newAV);
+						}
 					}
 				}else{
 					try{
@@ -171,10 +194,17 @@ public class MethodSummary {
 								newAV.appendField(sfr);
 							}
 							if(!this.sma.getMethod().isStatic()){
-								this.mes.addExitArgAV(regIndex - 1, newAV);
+								int argIndex = regIndex - 1;
+								String argType = this.sma.getMethod().getParameterType(argIndex).toString();
+								if(base.getType().toString().equals(argType)){
+									this.mes.addExitArgAV(argIndex, newAV);
+								}
 							}else{
 								if(regIndex < argsCount){
-									this.mes.addExitArgAV(regIndex, newAV);
+									String argType = this.sma.getMethod().getParameterType(regIndex).toString();
+									if(base.getType().toString().equals(argType)){
+										this.mes.addExitArgAV(regIndex, newAV);
+									}
 								}
 							}
 						}

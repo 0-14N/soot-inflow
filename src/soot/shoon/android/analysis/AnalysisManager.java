@@ -55,6 +55,7 @@ public class AnalysisManager {
 	private Map<String, List<String>> excludeList;
 	private Map<String, List<String>> killList;
 	private Set<String> includeSet;
+	private Map<String, List<String>> noRetWrapperList;
 
 	//this list records all the methods appear at 'source' path, which is used to
 	//exclude the 'sink' path contains source
@@ -87,6 +88,15 @@ public class AnalysisManager {
 		this.excludeList = this.itpw.getExcludeList();
 		this.killList = this.itpw.getKillList();
 		this.includeSet = this.itpw.getIncludeList();
+		this.noRetWrapperList = new HashMap<String, List<String>>();
+		
+		//temporarily, we add special cases at here
+		ArrayList<String> mapMethods = new ArrayList<String>();
+		mapMethods.add("put");
+		this.noRetWrapperList.put("java.util.Map", mapMethods);
+		ArrayList<String> listMethods = new ArrayList<String>();
+		listMethods.add("add");
+		this.noRetWrapperList.put("java.util.List", listMethods);
 	}
 	
 	public IInfoflowCFG getICFG(){
@@ -142,6 +152,8 @@ public class AnalysisManager {
 		//first start 'source' path backward analysis
 		for(SingleMethodAnalysis sma : sources){
 			//save the methods appear on 'source' path
+			logger.info("Begin at source \"{}.{}: {}\"", 
+					sma.getMethod().getDeclaringClass().getName(), sma.getMethod().getName(), sma.getActivationUnit());
 			methodsAtSourcePath.add(sma.getMethod());
 			sma.start();
 			sma.getMethodSummary().mergePathSummaries();
@@ -390,7 +402,7 @@ public class AnalysisManager {
 			
 			//save the exit state of this 'source' path
 			Unit sourceTriggerUnit = callers.get(0).getActivationUnit();
-			logger.info("Arrived at dummy method -- {}", sourceTriggerUnit);
+			logger.info("Back to dummyMain: \"{}\"", sourceTriggerUnit);
 			
 			SingleMethodAnalysis dummyMain = callers.get(0);
 			dummyMain.setMethodAnalysisType(MethodAnalysisType.DummyMain);
@@ -447,6 +459,15 @@ public class AnalysisManager {
 				result = true;
 				break;
 			}
+		}
+		return result;
+	}
+	
+	public boolean isInNoRetWrapper(String className, String methodName){
+		boolean result = false;
+		ArrayList<String> methods = (ArrayList<String>) noRetWrapperList.get(className);
+		if(methods != null && methods.contains(methodName)){
+			result = true;
 		}
 		return result;
 	}

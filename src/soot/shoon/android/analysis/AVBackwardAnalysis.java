@@ -234,7 +234,12 @@ public class AVBackwardAnalysis {
 								for(int i = 0; i < argsCount; i++){
 									Value arg = args.get(i);
 									//alias values
-									ArrayList<AliasValue> argAVs = exitArgAVs.get(i);
+									ArrayList<AliasValue> argAVs = null;
+									try{
+										argAVs = exitArgAVs.get(i);
+									}catch(IndexOutOfBoundsException iooe){
+										argAVs.size();
+									}
 									if(argAVs != null && argAVs.size() > 0){
 										for(AliasValue argAV : argAVs){
 											AliasValue newExitArgAV = new AliasValue(currUnit, this.av.getSource(), arg);

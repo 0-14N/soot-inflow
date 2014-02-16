@@ -15,6 +15,7 @@ import soot.SootMethod;
 import soot.SootMethodRef;
 import soot.Unit;
 import soot.Value;
+import soot.jimple.ArrayRef;
 import soot.jimple.AssignStmt;
 import soot.jimple.Constant;
 import soot.jimple.DefinitionStmt;
@@ -105,7 +106,11 @@ public class ForwardAnalysis {
 					}else if(rv instanceof ParameterRef){
 						ParameterRef pr = (ParameterRef) rv;
 						int index = pr.getIndex();
-						paramTV = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgTaintValue(index);
+						try{
+							paramTV = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgTaintValue(index);
+						}catch(IndexOutOfBoundsException ioobe){
+							index = 1;
+						}
 						paramAVs = spa.getPathSummary().getInitMethodSummary().getMethodInitState().getArgAliasValues(index);
 					}
 					if(paramTV != null){
@@ -173,7 +178,7 @@ public class ForwardAnalysis {
 					// the right value is not tainted
 					//if the left value is already tainted
 					if((tmpTV = spa.getPathSummary().isTainted(lv, currUnit)) != null){
-						if(rv instanceof Constant){
+						if(rv instanceof Constant && !(lv instanceof ArrayRef)){
 							spa.getPathSummary().deleteTaint(tmpTV);
 						}
 					}else if((tmpAVs = spa.getPathSummary().isAlias(lv, currUnit)).size() > 0){//if the left value is an alias
@@ -312,10 +317,52 @@ public class ForwardAnalysis {
 			
 				if(callee == null){
 					//TODO it is weird that some methods are missing in Soot
+					if(AnalysisManager.v().isInIncludeSet(className, methodName)){
+						//if any one of the parameters is tainted, the retValue should be tainted
+						if(retValue != null){
+							boolean hasTaintedArg = false;
+							for(Value arg : args){
+								if(spa.getPathSummary().isTainted(arg, currUnit) != null){
+									hasTaintedArg = true;
+									TaintValue newTV = new TaintValue(currUnit, retValue);
+									spa.getPathSummary().addTaintValue(newTV);
+									logger.info("Callee is null, but in InIncludeSet: {}, add taint to {}", currUnit, retValue);
+									break;
+								}
+							}
+							if(!hasTaintedArg){
+								if(invokeExpr instanceof InstanceInvokeExpr){
+									base = ((InstanceInvokeExpr) invokeExpr).getBase();
+									if(spa.getPathSummary().isTainted(base, currUnit) != null){
+										TaintValue newTV = new TaintValue(currUnit, retValue);
+										spa.getPathSummary().addTaintValue(newTV);
+										logger.info("Callee is null, but in InIncludeSet: {}, add taint to {}", currUnit, retValue);
+									}
+								}
+							}
+						}else{
+							if(AnalysisManager.v().isInNoRetWrapper(className, methodName)){
+								if(invokeExpr instanceof InstanceInvokeExpr){
+									base = ((InstanceInvokeExpr) invokeExpr).getBase();
+									if(spa.getPathSummary().isTainted(base, currUnit) == null){
+										for(Value arg : args){
+											if(spa.getPathSummary().isTainted(arg, currUnit) != null){
+												TaintValue newTV = new TaintValue(currUnit, base);
+												spa.getPathSummary().addTaintValue(newTV);
+												logger.info("Callee is null, but in InIncludeSet: {}, add taint to {}", currUnit, base);
+												break;
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}else{
 					if(AnalysisManager.v().isInExcludeList(className, methodName)){
 						//this method is in excluedeList, skip it
 						//TODO currently, nothing to do
+						logger.info("ExcludeList: {} {}", className, methodName);
 					}else if(AnalysisManager.v().isInIncludeSet(className, methodName)){
 						//if any one of the parameters is tainted, the retValue should be tainted
 						if(retValue != null){
@@ -335,8 +382,25 @@ public class ForwardAnalysis {
 									spa.getPathSummary().addTaintValue(newTV);
 								}
 							}
+						}else{
+							if(AnalysisManager.v().isInNoRetWrapper(className, methodName)){
+								if(invokeExpr instanceof InstanceInvokeExpr){
+									base = ((InstanceInvokeExpr) invokeExpr).getBase();
+									if(spa.getPathSummary().isTainted(base, currUnit) == null){
+										for(Value arg : args){
+											if(spa.getPathSummary().isTainted(arg, currUnit) != null){
+												TaintValue newTV = new TaintValue(currUnit, base);
+												spa.getPathSummary().addTaintValue(newTV);
+												logger.info("Callee is null, but in InIncludeSet: {}, add taint to {}", currUnit, base);
+												break;
+											}
+										}
+									}
+								}
+							}
 						}
 					}else if(AnalysisManager.v().isInClassList(className, methodName)){
+						logger.info("InClassList: {} {}", className, methodName);
 						//TODO
 					}else{
 						//start a new SingleMethodAnalysis
@@ -379,6 +443,8 @@ public class ForwardAnalysis {
 						
 						//start the callee analysis and merge the path summaries
 						sma.start();
+						//logger.info("{}:{} invokes {}", this.spa.getSMA().getMethod().getName(), 
+								//this.spa.getSMA().getActivationUnit(), sma.getMethod().getName());
 						sma.getMethodSummary().mergePathSummaries();
 						
 						//next, we should merge callee's exit state with caller's current path state
@@ -501,7 +567,9 @@ public class ForwardAnalysis {
 				if(issm.isMySink((Stmt)currUnit)){
 					for(Value arg : args){
 						if(spa.getPathSummary().isTainted(arg, currUnit) != null){
-							logger.info("Sink has parameter(s) tainted {} {}", currUnit, arg);
+							logger.info("Arrived at sink \"{}.{}: {}\", and has parameter(s) tainted \"{}\"", 
+									this.spa.getSMA().getMethod().getDeclaringClass().getName(),
+									this.spa.getSMA().getMethod().getName(), currUnit, arg);
 						}
 					}
 				}
