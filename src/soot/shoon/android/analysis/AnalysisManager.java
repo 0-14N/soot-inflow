@@ -34,6 +34,7 @@ import soot.shoon.android.analysis.entity.AliasValue;
 import soot.shoon.android.analysis.entity.MergedExitState;
 import soot.shoon.android.analysis.entity.MethodSummary;
 import soot.shoon.android.analysis.entity.PathSummary;
+import soot.shoon.android.analysis.entity.SootMethodNode;
 import soot.shoon.android.analysis.entity.TaintValue;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
@@ -150,7 +151,8 @@ public class AnalysisManager {
 	public void start(){
 		//find the 'source' trigger units in dummyMain
 		for(SingleMethodAnalysis sma : sources){
-			collectSourceTriggerUnits(sma.getMethod(), null);
+			SootMethodNode methodNode = new SootMethodNode(sma.getMethod(), null, null);
+			collectSourceTriggerUnits(sma.getMethod(), null, methodNode);
 		}
 		
 		//find the 'sink' trigger units in dummyMain
@@ -348,7 +350,8 @@ public class AnalysisManager {
 	 * @param smOnSourcePath
 	 * @param u
 	 */
-	private void collectSourceTriggerUnits(SootMethod smOnSourcePath, Unit u){
+	private void collectSourceTriggerUnits(SootMethod smOnSourcePath, Unit u, 
+			SootMethodNode parentNode){
 		if(smOnSourcePath.getName().equals("dummyMainMethod")){
 			if(!sourceTriggerUnits.contains(u)){
 				sourceTriggerUnits.add(u);
@@ -356,7 +359,17 @@ public class AnalysisManager {
 		}
 		Set<Unit> callerUnits = icfg.getCallersOf(smOnSourcePath);
 		for(Unit callUnit : callerUnits){
-			collectSourceTriggerUnits(icfg.getMethodOf(callUnit), callUnit);
+			try{
+				SootMethod caller = icfg.getMethodOf(callUnit);
+				if(!parentNode.isMyAncestor(caller)){
+					SootMethodNode callerNode = new SootMethodNode(caller, parentNode, null);
+					logger.info("{} ========> {}", parentNode.getMethod().getName(), caller.getName());
+					parentNode.addSon(callerNode);
+					collectSourceTriggerUnits(caller, callUnit, callerNode);
+				}
+			}catch(Exception e){
+				logger.info(e.toString());
+			}
 		}
 	}
 	
