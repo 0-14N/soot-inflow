@@ -183,7 +183,7 @@ public class ForwardAnalysis {
 					// the right value is not tainted
 					//if the left value is already tainted
 					if((tmpTV = spa.getPathSummary().isTainted(lv, currUnit)) != null){
-						if(rv instanceof Constant && !(lv instanceof ArrayRef)){
+						if(!(lv instanceof ArrayRef) && !(rv instanceof InvokeExpr)){
 							spa.getPathSummary().deleteTaint(tmpTV);
 						}
 					}else if((tmpAVs = spa.getPathSummary().isAlias(lv, currUnit)).size() > 0){//if the left value is an alias
@@ -389,7 +389,7 @@ public class ForwardAnalysis {
 											if(spa.getPathSummary().isTainted(arg, currUnit) != null){
 												TaintValue newTV = new TaintValue(currUnit, base);
 												spa.getPathSummary().addTaintValue(newTV);
-												logger.info("Callee is null, but in InIncludeSet: {}, add taint to {}", currUnit, base);
+												logger.info("Callee is null, but in NoRetWrapper: {}, add taint to {}", currUnit, base);
 												break;
 											}
 										}
@@ -412,6 +412,7 @@ public class ForwardAnalysis {
 									hasTaintedArg = true;
 									TaintValue newTV = new TaintValue(currUnit, retValue);
 									spa.getPathSummary().addTaintValue(newTV);
+									logger.info("Callee is not null, but in InIncludeSet: {}, add taint to {}", currUnit, retValue);
 									break;
 								}
 							}
@@ -420,6 +421,7 @@ public class ForwardAnalysis {
 								if(spa.getPathSummary().isTainted(base, currUnit) != null){
 									TaintValue newTV = new TaintValue(currUnit, retValue);
 									spa.getPathSummary().addTaintValue(newTV);
+									logger.info("Callee is not null, but in InIncludeSet: {}, add taint to {}", currUnit, retValue);
 								}
 							}
 						}else{
@@ -431,7 +433,7 @@ public class ForwardAnalysis {
 											if(spa.getPathSummary().isTainted(arg, currUnit) != null){
 												TaintValue newTV = new TaintValue(currUnit, base);
 												spa.getPathSummary().addTaintValue(newTV);
-												logger.info("Callee is null, but in InIncludeSet: {}, add taint to {}", currUnit, base);
+												logger.info("Callee is not null, but in NoRetWrapper: {}, add taint to {}", currUnit, base);
 												break;
 											}
 										}

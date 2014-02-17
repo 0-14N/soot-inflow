@@ -1,11 +1,23 @@
 package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
+import soot.Body;
+import soot.Scene;
+import soot.Trap;
+import soot.Unit;
+import soot.Value;
+import soot.jimple.AssignStmt;
+import soot.jimple.CaughtExceptionRef;
+import soot.jimple.DefinitionStmt;
+import soot.jimple.ThrowStmt;
 import soot.toolkits.graph.Block;
 import soot.toolkits.graph.ClassicCompleteBlockGraph;
 import soot.toolkits.graph.ZonedBlockGraph;
+import soot.util.Chain;
 
 public class MethodPathCreator {
 	private static MethodPathCreator instance;
@@ -30,9 +42,43 @@ public class MethodPathCreator {
 		List<Block> allBlocks = graph.getBlocks();
 		List<Block> heads = graph.getHeads();
 		List<Block> tails = graph.getTails();
-		
 		int i = 0;
-		for(; i < heads.size(); i++){
+	
+		/*
+		HashMap<Unit, Block> tryCatchUnitMap = new HashMap<Unit, Block>();
+		Body body = graph.getBody();
+		Chain<Trap> traps = body.getTraps();
+		Iterator<Trap> trapIter = traps.iterator();
+		while(trapIter.hasNext()){
+			Trap trap = trapIter.next();
+			Unit tryEnd = trap.getEndUnit();
+			Unit handlerBegin = trap.getHandlerUnit();
+			for(i = 0; i < heads.size(); i++){
+				Block headBlk = heads.get(i);
+				Unit headU = headBlk.getHead();
+				if(headU.equals(handlerBegin)){
+					tryCatchUnitMap.put(tryEnd, headBlk);
+				}
+			}
+		}
+		*/
+		
+		HashMap<String, Block> exceptionHandlers = new HashMap<String, Block>();
+		for(i = 0; i < heads.size(); i++){
+			Block headBlk = heads.get(i);
+			Unit headU = headBlk.getHead();
+			if(headU instanceof DefinitionStmt){
+				DefinitionStmt ds = (DefinitionStmt) headU;
+				Value rv = ds.getRightOp();
+				Value lv = ds.getLeftOp();
+				if(rv instanceof CaughtExceptionRef){
+					String exceptionType = lv.getType().toString();
+					exceptionHandlers.put(exceptionType, headBlk);
+				}
+			}
+		}
+		
+		for(i = 0; i < heads.size(); i++){
 			Block head = heads.get(i);
 			ArrayList<Integer> source = new ArrayList<Integer>();
 			//get the paths start from this head
@@ -41,7 +87,25 @@ public class MethodPathCreator {
 			for(ArrayList<Integer> intList : intLists){
 				ArrayList<Block> blockList = new ArrayList<Block>();
 				for(Integer integer : intList){
-					blockList.add(allBlocks.get(integer.intValue()));
+					Block b = allBlocks.get(integer.intValue());
+					blockList.add(b);
+					//if the block throws an exception
+					Unit tail = b.getTail();
+					if(tail instanceof ThrowStmt){
+						ThrowStmt ts = (ThrowStmt) tail;
+						Value exception = ts.getOp();
+						String exceptionType = exception.getType().toString();
+						Block handlerBlk = exceptionHandlers.get(exceptionType);
+						if(handlerBlk != null){
+							blockList.add(handlerBlk);
+						}
+					}/*else{
+						Block handlerBlk = tryCatchUnitMap.get(tail);
+						if(handlerBlk != null){
+							blockList.add(handlerBlk);
+						}
+					}
+					*/
 				}
 				result.add(blockList);
 			}
