@@ -646,6 +646,9 @@ public class ForwardAnalysis {
 		if(spa.getPathSummary().alreadyInTaintsSet(currUnit, lv)){
 			return;
 		}
+		if(lv instanceof StaticFieldRef){
+			spa.getPathSummary().getStaticFieldTVs().add((StaticFieldRef) lv);
+		}
 		//first add the left value to taints set
 		TaintValue tv = new TaintValue(currUnit, lv);
 		spa.getPathSummary().addTaintValue(tv);

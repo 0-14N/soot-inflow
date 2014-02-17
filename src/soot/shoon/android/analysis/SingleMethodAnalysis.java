@@ -9,6 +9,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import soot.SootClass;
 import soot.SootFieldRef;
 import soot.SootMethod;
 import soot.Unit;
@@ -351,6 +352,26 @@ public class SingleMethodAnalysis {
 			//add the static field's taint and alias values to pSummary
 			pSummary.addAllStaticFieldTVs(methodSummary.getMethodInitState().getStaticFieldTVs());
 			pSummary.addAllStaticFieldAVs(methodSummary.getMethodInitState().getStaticFieldAVs());
+		
+			//[start] static initialization
+			if(this.method.isConstructor()){
+				SootClass sootClass = this.method.getDeclaringClass();
+				SootMethod staticInitializer = null;
+				try{
+					staticInitializer = sootClass.getMethodByName("<clinit>");
+				}catch(RuntimeException re){
+				}
+				if(staticInitializer != null){
+					logger.info("Do static initialization before constructor: {}", sootClass.getName());
+					SingleMethodAnalysis staticSMA = new SingleMethodAnalysis(staticInitializer, 
+							MethodAnalysisType.Callee, this.preSMA);
+					MethodSummary calleeMS = staticSMA.getMethodSummary();
+					calleeMS.getMethodInitState().addAllStaticFieldTVs(pSummary.getStaticFieldTVs());
+					calleeMS.getMethodInitState().addAllStaticFieldAVs(pSummary.getStaticFieldAVs());
+					staticSMA.start();
+				}
+			}
+			//[end]
 			
 			SinglePathAnalysis spa = new SinglePathAnalysis(this, activationUnit, pSummary, this.type);
 			spa.start();
