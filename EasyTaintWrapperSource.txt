@@ -292,6 +292,8 @@
 
 <javax.servlet.ServletResponse: java.io.PrintWriter getWriter()>
 
+<java.net.URL: java.net.URLConnection openConnection()>
+
 ~<android.app.Activity: android.view.View findViewById(int)>
 ~<android.app.Activity: void onCreate(android.os.Bundle)>
 ~<android.app.Activity: void <init>()>

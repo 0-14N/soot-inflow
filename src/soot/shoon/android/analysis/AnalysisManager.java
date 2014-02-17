@@ -103,6 +103,9 @@ public class AnalysisManager {
 		ArrayList<String> listMethods = new ArrayList<String>();
 		listMethods.add("add");
 		this.noRetWrapperList.put("java.util.List", listMethods);
+		ArrayList<String> urlMethods = new ArrayList<String>();
+		urlMethods.add("<init>");
+		this.noRetWrapperList.put("java.net.URL", urlMethods);
 	}
 	
 	public IInfoflowCFG getICFG(){

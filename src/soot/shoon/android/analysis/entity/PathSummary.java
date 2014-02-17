@@ -8,16 +8,28 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import soot.Local;
+import soot.PointsToSet;
+import soot.SootClass;
+import soot.SootField;
+import soot.Type;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.ArrayRef;
 import soot.jimple.CastExpr;
+import soot.jimple.ClassConstant;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InvokeExpr;
 import soot.jimple.StaticFieldRef;
+import soot.shoon.android.analysis.AnalysisManager;
 
 public class PathSummary {
+	
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	private ArrayList<Unit> allUnits;
 	private ArrayList<InvokeExpr> invokeExprs;
 	private Set<TaintValue> taintsSet;
@@ -234,7 +246,7 @@ public class PathSummary {
 	public StaticFieldRef isStaticFieldTainted(StaticFieldRef sfr){
 		StaticFieldRef result = null;
 		for(StaticFieldRef item : this.staticFieldTVs){
-			if(item.toString().equals(sfr.toString())){
+			if(item.toString().equals(sfr.toString()) || item.getField().toString().equals(sfr.getField().toString())){
 				result = item;
 				break;
 			}
@@ -397,6 +409,12 @@ public class PathSummary {
 			if(!isExisted){
 				avSet.add(av);
 			}
+		}
+	}
+	
+	public void addStaticFieldRefTV(StaticFieldRef sfr){
+		if(!this.staticFieldTVs.contains(sfr)){
+			this.staticFieldTVs.add(sfr);
 		}
 	}
 	

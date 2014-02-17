@@ -324,6 +324,9 @@ public class ForwardAnalysis {
 				
 				args = invokeExpr.getArgs();
 				argsCount = args.size();
+				if(invokeExpr instanceof InstanceInvokeExpr){
+					base = ((InstanceInvokeExpr) invokeExpr).getBase();
+				}
 				
 				SootMethodRef smr = invokeExpr.getMethodRef();
 				String className = smr.declaringClass().getName();
@@ -619,6 +622,13 @@ public class ForwardAnalysis {
 									this.spa.getSMA().getMethod().getName(), currUnit, arg);
 						}
 					}
+					if(base != null){
+						if(spa.getPathSummary().isTainted(base, currUnit) != null){
+							logger.info("Arrived at sink \"{}.{}: {}\", and has parameter(s) tainted \"{}\"", 
+									this.spa.getSMA().getMethod().getDeclaringClass().getName(),
+									this.spa.getSMA().getMethod().getName(), currUnit, base);
+						}
+					}
 				}
 				
 			}
@@ -647,7 +657,7 @@ public class ForwardAnalysis {
 			return;
 		}
 		if(lv instanceof StaticFieldRef){
-			spa.getPathSummary().getStaticFieldTVs().add((StaticFieldRef) lv);
+			spa.getPathSummary().addStaticFieldRefTV((StaticFieldRef) lv);
 		}
 		//first add the left value to taints set
 		TaintValue tv = new TaintValue(currUnit, lv);
