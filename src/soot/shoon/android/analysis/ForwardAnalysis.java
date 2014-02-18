@@ -1,6 +1,7 @@
 package soot.shoon.android.analysis;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -347,11 +348,13 @@ public class ForwardAnalysis {
 					types = pts.possibleTypes();
 					if(types != null){
 						for(Type type : types){
-							methodSignature = methodSignature.replaceFirst(className, type.toString());
-							className = type.toString();
-							callee = AnalysisManager.v().getMethod(className, methodName, methodSignature);
+							String newClassName = type.toString();
+							String[] tokens = methodSignature.split(":");
+							tokens[0] = "<" + newClassName + ":";
+							String newSignature = tokens[0] + tokens[1];
+							callee = AnalysisManager.v().getMethod(newClassName, methodName, newSignature);
 							if(callee != null){
-								logger.info("**** found point to {} : {}", className, methodName);
+								logger.info("**** found point to {} : {}", newClassName, methodName);
 								break;
 							}
 						}

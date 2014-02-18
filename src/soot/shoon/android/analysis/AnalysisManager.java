@@ -541,8 +541,13 @@ public class AnalysisManager {
 			SootClass superClass = sc.getSuperclass();
 			if(superClass == null)
 				return null;
-			else
-				return getMethod(superClass.getName(), methodName, signature);
+			else{
+				String newClassName = superClass.getName();
+				String[] tokens = signature.split(":");
+				tokens[0] = "<" + newClassName + ":";
+				String newSignature = tokens[0] + tokens[1];
+				return getMethod(newClassName, methodName, newSignature);
+			}
 		}
 		return result;
 	}
