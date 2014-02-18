@@ -161,7 +161,8 @@ public class AnalysisManager {
 			Entry<Block, Set<Unit>> entry = (Entry<Block, Set<Unit>>) sinkIter.next();
 			Block block = entry.getKey();
 			SootMethod sinkContainer = block.getBody().getMethod();
-			collectSinkTriggerUnits(sinkContainer, null);
+			SootMethodNode methodNode = new SootMethodNode(sinkContainer, null, null);
+			collectSinkTriggerUnits(sinkContainer, null, methodNode);
 		}
 		
 		//first start 'source' path backward analysis
@@ -324,7 +325,7 @@ public class AnalysisManager {
 	 * @param smOnSinkPath
 	 * @param u
 	 */
-	private void collectSinkTriggerUnits(SootMethod smOnSinkPath, Unit u){
+	private void collectSinkTriggerUnits(SootMethod smOnSinkPath, Unit u, SootMethodNode parentNode){
 		if(smOnSinkPath.getName().equals("dummyMainMethod")){
 			if(!sinkTriggerUnits.contains(u)){
 				sinkTriggerUnits.add(u);
@@ -335,7 +336,12 @@ public class AnalysisManager {
 		}else{
 			Set<Unit> callerUnits = icfg.getCallersOf(smOnSinkPath);
 			for(Unit callUnit : callerUnits){
-				collectSinkTriggerUnits(icfg.getMethodOf(callUnit), callUnit);
+				SootMethod caller = icfg.getMethodOf(callUnit);
+				if(!parentNode.isMyAncestor(caller)){
+					SootMethodNode callerNode = new SootMethodNode(caller, parentNode, null);
+					parentNode.addSon(callerNode);
+					collectSinkTriggerUnits(icfg.getMethodOf(callUnit), callUnit, callerNode);
+				}
 			}
 		}
 	}
@@ -363,7 +369,7 @@ public class AnalysisManager {
 				SootMethod caller = icfg.getMethodOf(callUnit);
 				if(!parentNode.isMyAncestor(caller)){
 					SootMethodNode callerNode = new SootMethodNode(caller, parentNode, null);
-					logger.info("{} ========> {}", parentNode.getMethod().getName(), caller.getName());
+					//logger.info("{} ========> {}", parentNode.getMethod(), caller);
 					parentNode.addSon(callerNode);
 					collectSourceTriggerUnits(caller, callUnit, callerNode);
 				}

@@ -160,7 +160,7 @@ public class Infoflow extends AbstractInfoflow {
 		Options.v().set_whole_shimple(true);//==> "-ws"
 		Options.v().setPhaseOption("wstp", "enabled:true");//==>
 		Options.v().set_soot_classpath(path);//==> "-cp path"
-		Options.v().set_process_dir(new ArrayList<String>(classes));//==> "-process-path classes"
+		//Options.v().set_process_dir(new ArrayList<String>(classes));//==> "-process-path classes"
 
 		// Configure the callgraph algorithm
 		switch (callgraphAlgorithm) {
@@ -171,21 +171,24 @@ public class Infoflow extends AbstractInfoflow {
 				else{
 					Options.v().setPhaseOption("cg.spark", "vta:true");//==> "vta:true"
 				}
+				Options.v().setPhaseOption("cg.spark", "string-constants:true");
 				break;
 			case RTA:
 				Options.v().setPhaseOption("cg.spark", "on");
 				Options.v().setPhaseOption("cg.spark", "rta:true");
+				Options.v().setPhaseOption("cg.spark", "string-constants:true");
 				break;
 			case VTA:
 				Options.v().setPhaseOption("cg.spark", "on");
 				Options.v().setPhaseOption("cg.spark", "vta:true");
+				Options.v().setPhaseOption("cg.spark", "string-constants:true");
 				break;
 			default:
 				throw new RuntimeException("Invalid callgraph algorithm");
 		}
 		// do not merge variables (causes problems with PointsToSets)
 		//jb.ulp -- Local packer: minimizes number of locals
-		//Options.v().setPhaseOption("jb.ulp", "off");
+		Options.v().setPhaseOption("jb.ulp", "off");
 		
 		//Removes redundant static initializer calls
 		Options.v().setPhaseOption("cg", "trim-clinit:false");//==>"cg trim-clinit:false"
@@ -330,6 +333,11 @@ public class Infoflow extends AbstractInfoflow {
                 			}
                 		}
                 		
+                		String tmpClassName = m.getDeclaringClass().getName();
+                		if(tmpClassName.startsWith("android.") || 
+                				tmpClassName.startsWith("com.android.internal.app")){
+                			continue;
+                		}
                 		//For each reachable methods, find the sources and sinks.
                 		//Divide the method to basic blocks, iterate the blocks to find the sources
                 		//and sinks
@@ -342,19 +350,19 @@ public class Infoflow extends AbstractInfoflow {
                 				Unit u = it.next();
                 				//if(sourcesSinks.isSource((Stmt) u, iCfg)){
                 				if(sourcesSinks.isMySource((Stmt) u)){
-                    				logger.info("Source found: {}-->{}", iCfg.getMethodOf(u), u);
-                    				SingleMethodAnalysis sma = new SingleMethodAnalysis(m, zbg, b, u, null);
-                    				//record the source
-                    				AnalysisManager.v().addSource(sma);
-                    				sourceCount++;
-                    			}
+                					logger.info("Source found: {}-->{}", iCfg.getMethodOf(u), u);
+                					SingleMethodAnalysis sma = new SingleMethodAnalysis(m, zbg, b, u, null);
+                					//record the source
+                					AnalysisManager.v().addSource(sma);
+                					sourceCount++;
+                				}
                     			//if(sourcesSinks.isSink((Stmt) u, iCfg)){
                 				if(sourcesSinks.isMySink((Stmt) u)){
-                    				logger.info("Sink found: {}-->{}", iCfg.getMethodOf(u), u);
-                    				//record the sink
-                    				AnalysisManager.v().addSink(b, u);
-                    				sinkCount++;
-                    			}
+                					logger.info("Sink found: {}-->{}", iCfg.getMethodOf(u), u);
+                					//record the sink
+                					AnalysisManager.v().addSink(b, u);
+                					sinkCount++;
+                				}
                 			}
                 		}
                 	}
